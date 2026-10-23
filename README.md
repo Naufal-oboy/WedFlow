@@ -2,6 +2,34 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+## Koneksi database
+
+Proyek menggunakan Prisma 7 dan PostgreSQL. Atur `DATABASE_URL` di `.env`
+(jangan commit kredensial), misalnya
+`postgresql://USER:PASSWORD@localhost:5432/wedflow_db?schema=public`.
+
+```bash
+npm run db:generate
+npm run db:check
+```
+
+`db:check` menjalankan `SELECT 1` tanpa mengubah data. Konfigurasi CLI ada di
+[prisma.config.ts](./prisma.config.ts). Build juga menjalankan generator Prisma.
+
+Gunakan instance bersama dari [src/lib/prisma.ts](./src/lib/prisma.ts) di Server Components,
+Server Actions, atau Route Handlers dengan runtime Node.js:
+
+```ts
+import { prisma } from "@/lib/prisma";
+
+const clients = await prisma.client.findMany();
+```
+
+Jangan memanggil `$disconnect()` setiap request; instance dan connection pool
+dipakai ulang. File hasil generate di `src/generated/prisma` tidak diedit manual.
+
+## Development server
+
 First, run the development server:
 
 ```bash
@@ -16,7 +44,7 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the page by modifying `src/app/(marketing)/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
