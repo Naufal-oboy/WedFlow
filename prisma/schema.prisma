@@ -19,33 +19,73 @@ model Client {
   phone     String?
   createdAt DateTime @default(now())
   events    Event[]
+  users     User[]
 }
 
 model Event {
-  id         String       @id @default(uuid())
-  clientId   String
-  name       String
-  slug       String       @unique
-  eventDate  DateTime
-  location   String?
-  status     String       @default("DRAFT")
-  createdAt  DateTime     @default(now())
+  id        String   @id @default(uuid())
+  clientId  String
+  name      String
+  slug      String   @unique
+  eventDate DateTime
+  location  String?
+  status    String   @default("DRAFT")
+  createdAt DateTime @default(now())
 
-  client      Client       @relation(fields: [clientId], references: [id])
-  invitations Invitation[]
+  client           Client       @relation(fields: [clientId], references: [id])
+  invitations      Invitation[]
+  staffAssignments EventStaff[]
 
   @@index([clientId])
 }
 
 model Invitation {
-  id          String   @id @default(uuid())
-  eventId     String
-  guestName   String
-  guestQuota  Int      @default(1)
-  code        String   @unique
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  eventId    String
+  guestName  String
+  guestQuota Int      @default(1)
+  code       String   @unique
+  createdAt  DateTime @default(now())
+
+  checkedInAt    DateTime?
+  checkedInById  String?
+  checkedInCount Int?
+  checkedInBy    User?     @relation(fields: [checkedInById], references: [id], onDelete: SetNull)
 
   event Event @relation(fields: [eventId], references: [id])
 
   @@index([eventId])
+}
+
+enum Role {
+  SUPER_ADMIN
+  CLIENT
+  STAFF
+}
+
+model User {
+  id                   String       @id @default(uuid())
+  name                 String
+  email                String       @unique
+  passwordHash         String
+  role                 Role         @default(STAFF)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  clientId             String?
+  client               Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  staffAssignments     EventStaff[]
+  checkedInInvitations Invitation[]
+
+  @@index([clientId])
+}
+
+model EventStaff {
+  eventId    String
+  userId     String
+  assignedAt DateTime @default(now())
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, userId])
+  @@index([userId])
 }

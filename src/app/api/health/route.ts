@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { unstable_rethrow } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -11,7 +12,8 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Database connection failed:", error);
+    unstable_rethrow(error);
+    console.error("Database health check failed.");
 
     return NextResponse.json(
       {

@@ -4,6 +4,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.wedflow-theme {
+  --primary: #14543f;
+  --primary-foreground: #ffffff;
+  --ring: #7ca78d;
+  --background: #faf8f2;
+  --foreground: #183c30;
+  --card: #ffffff;
+  --card-foreground: #183c30;
+  --border: #e5e1d6;
+  --input: #d9ddd4;
+  --muted: #f1eee5;
+  --muted-foreground: #6c7169;
+  --font-heading: var(--font-geist-sans);
+  color-scheme: light;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
