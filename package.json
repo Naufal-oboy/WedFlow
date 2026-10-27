@@ -13,6 +13,8 @@
     "auth:secret": "node scripts/init-auth-secret.mjs",
     "test:auth": "node --conditions=react-server --import tsx --test tests/auth.test.ts",
     "test:management": "node --conditions=react-server --import tsx --test tests/management.test.ts",
+    "test:guests": "node --conditions=react-server --import tsx --test tests/guests.test.ts",
+    "test:guests:e2e": "node --conditions=react-server --import tsx scripts/test-guests-e2e.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "test:auth:e2e": "node --conditions=react-server --import tsx scripts/test-auth-e2e.ts"
   },

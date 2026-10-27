@@ -29,6 +29,10 @@ Pengelolaan client dan acara, filter/pagination, penugasan staff, serta ringkasa
 admin tersedia di dashboard. Lihat [panduan Client & Event Management](./docs/client-event-management.md)
 untuk keputusan implementasi, daftar file, migrasi aman, dan langkah pengujian.
 
+Pengelolaan tamu dan undangan per acara, pencarian/filter/pagination, detail,
+edit kuota, penghapusan sebelum check-in, serta impor CSV dengan preview dan
+konfirmasi tersedia untuk Super Admin. Lihat [Guest & Invitation Management](./docs/guest-management.md).
+
 Keunggulan utama WedFlow adalah **alur check-in alternatif ketika tamu tidak membawa atau lupa QR undangan**, sehingga proses penerimaan tamu tidak sepenuhnya bergantung pada satu metode verifikasi.
 
 > **Status pengembangan:** Project masih dalam tahap pembangunan. Fitur yang dijelaskan di bawah merupakan cakupan produk yang direncanakan; ketersediaan setiap fitur perlu diperiksa pada implementasi terbaru.
@@ -258,7 +262,8 @@ Status berikut merupakan **rencana pengembangan**, bukan klaim bahwa semua modul
 - [x] Dashboard awal Super Admin, Client, dan Staff.
 - [x] CRUD Client dan Event Management.
 - [x] Penugasan staff ke event.
-- [ ] Manajemen tamu, kuota, dan impor CSV/Excel.
+- [x] Manajemen tamu, kuota, dan impor CSV dengan preview/validasi.
+- [ ] Dukungan impor Excel (.xlsx).
 - [ ] Pembuatan dan pemindaian QR undangan personal.
 - [ ] Smart Name Search untuk tamu tanpa QR.
 - [ ] Public QR Pre-check-in dan pass sementara.
