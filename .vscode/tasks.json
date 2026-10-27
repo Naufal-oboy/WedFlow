@@ -1,0 +1,24 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "WedFlow: build",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "WedFlow: test server",
+			"type": "shell",
+			"command": "$env:AUTH_URL='http://localhost:3100'; npm run start -- --port 3100",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

@@ -17,9 +17,23 @@ model Client {
   name      String
   email     String?
   phone     String?
+  type      ClientType @default(COUPLE)
+  status    ClientStatus @default(ACTIVE)
   createdAt DateTime @default(now())
   events    Event[]
   users     User[]
+
+  @@index([status, createdAt])
+}
+
+enum ClientType {
+  COUPLE
+  WEDDING_ORGANIZER
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
 }
 
 model Event {
@@ -37,6 +51,8 @@ model Event {
   staffAssignments EventStaff[]
 
   @@index([clientId])
+  @@index([eventDate])
+  @@index([status, eventDate])
 }
 
 model Invitation {

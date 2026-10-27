@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const user = await requireApiUser(["SUPER_ADMIN", "STAFF"]);
     requireSameOrigin(request);
     const input = checkinSchema.parse(await request.json());
-    const where = { code: input.code, eventId: input.eventId, event: eventScope(user) };
+    const where = { code: input.code, eventId: input.eventId, event: { AND: [eventScope(user), { status: "ACTIVE", client: { status: "ACTIVE" as const } }] } };
     const invitation = await prisma.invitation.findFirst({ where, select: { id: true, guestQuota: true } });
     if (!invitation) throw new AccessError(404, "Undangan tidak ditemukan.");
     if (input.count > invitation.guestQuota) throw new AccessError(400, "Jumlah tamu melebihi kuota undangan.");

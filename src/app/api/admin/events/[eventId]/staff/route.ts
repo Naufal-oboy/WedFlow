@@ -10,11 +10,15 @@ export async function PUT(request: Request, context: { params: Promise<{ eventId
     const { eventId } = await context.params;
     const { userIds } = z.object({ userIds: z.array(z.string().uuid()).max(100).transform((ids) => [...new Set(ids)]) }).parse(await request.json());
     await prisma.$transaction(async (tx) => {
-      if (!await tx.event.findUnique({ where: { id: eventId }, select: { id: true } })) throw new AccessError(404, "Acara tidak ditemukan.");
+      const event = await tx.event.findUnique({ where: { id: eventId }, select: { client: { select: { status: true } } } });
+      if (!event) throw new AccessError(404, "Acara tidak ditemukan.");
+      const existing = await tx.eventStaff.findMany({ where: { eventId }, select: { userId: true } });
+      const additions = userIds.filter((id) => !existing.some((assignment) => assignment.userId === id));
+      if (event.client.status !== "ACTIVE" && additions.length) throw new AccessError(409, "Aktifkan client sebelum menambahkan penugasan.");
       if (await tx.user.count({ where: { id: { in: userIds }, role: "STAFF" } }) !== userIds.length) throw new AccessError(400, "Penugasan hanya untuk akun STAFF.");
-      await tx.eventStaff.deleteMany({ where: { eventId } });
-      await tx.eventStaff.createMany({ data: userIds.map((userId) => ({ eventId, userId })) });
-    });
+      await tx.eventStaff.deleteMany({ where: { eventId, userId: { notIn: userIds } } });
+      await tx.eventStaff.createMany({ data: additions.map((userId) => ({ eventId, userId })) });
+    }, { isolationLevel: "Serializable" });
     return apiJson({ success: true });
   });
 }

@@ -25,6 +25,10 @@ pengelolaan akun, penugasan staff, dan check-in manual berdasarkan kode undangan
 sudah diimplementasikan. Panduan lengkap ada di
 [Authentication & RBAC](./docs/authentication.md).
 
+Pengelolaan client dan acara, filter/pagination, penugasan staff, serta ringkasan
+admin tersedia di dashboard. Lihat [panduan Client & Event Management](./docs/client-event-management.md)
+untuk keputusan implementasi, daftar file, migrasi aman, dan langkah pengujian.
+
 Keunggulan utama WedFlow adalah **alur check-in alternatif ketika tamu tidak membawa atau lupa QR undangan**, sehingga proses penerimaan tamu tidak sepenuhnya bergantung pada satu metode verifikasi.
 
 > **Status pengembangan:** Project masih dalam tahap pembangunan. Fitur yang dijelaskan di bawah merupakan cakupan produk yang direncanakan; ketersediaan setiap fitur perlu diperiksa pada implementasi terbaru.
@@ -252,7 +256,7 @@ Status berikut merupakan **rencana pengembangan**, bukan klaim bahwa semua modul
 - [x] Pembuatan database dan migrasi awal.
 - [x] Authentication dan Role-Based Access Control (RBAC).
 - [x] Dashboard awal Super Admin, Client, dan Staff.
-- [ ] CRUD Client dan Event Management.
+- [x] CRUD Client dan Event Management.
 - [x] Penugasan staff ke event.
 - [ ] Manajemen tamu, kuota, dan impor CSV/Excel.
 - [ ] Pembuatan dan pemindaian QR undangan personal.

@@ -1,2 +1,7 @@
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { Overview } from "@/components/dashboard/overview";
-export default function Page() { return <Overview role="STAFF" />; }
+function PageContent() { return <Overview role="STAFF" />; }
+
+export default function Page() {
+  return <DashboardPage><PageContent /></DashboardPage>;
+}

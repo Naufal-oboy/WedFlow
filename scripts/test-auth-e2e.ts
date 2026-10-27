@@ -77,7 +77,7 @@ async function main() {
   try { await bootstrapSuperAdmin({ email: `${prefix}-staff@example.invalid`, password }); } catch { conflictRejected = true; }
   check(conflictRejected, "Seed must not promote existing staff.");
 
-  await prisma.event.createMany({ data: eventIds.map((id, index) => ({ id, clientId: clientIds[index], name: `${prefix}-event-${index}`, slug: `${prefix}-${index}`, eventDate: new Date("2030-01-01T08:00:00Z") })) });
+  await prisma.event.createMany({ data: eventIds.map((id, index) => ({ id, clientId: clientIds[index], name: `${prefix}-event-${index}`, slug: `${prefix}-${index}`, status: "ACTIVE", eventDate: new Date("2030-01-01T08:00:00Z") })) });
   await prisma.eventStaff.create({ data: { eventId: eventIds[0], userId: ids.staff } });
   await prisma.invitation.createMany({ data: invitationIds.map((id, index) => ({ id, eventId: eventIds[index], guestName: "Auth Test Guest", guestQuota: 2, code: `${prefix}-code-${index}` })) });
 
@@ -163,7 +163,70 @@ async function main() {
   check((await clientA.request("/api/events")).status === 401, "Logged-out sessions cannot access APIs.");
   await prisma.user.update({ where: { id: ids.clientB }, data: { role: "STAFF", clientId: null } });
   check((await clientB.request("/api/events")).status === 401, "Role changes must invalidate old JWTs.");
-  console.log(`Auth end-to-end: ${assertions} assertions passed.`);
+  // Client/event management uses the same authenticated sessions and isolated fixtures.
+  for (const path of ["/api/admin/clients", "/api/admin/events"]) {
+    check((await new BrowserSession().request(path)).status === 401, "Management lists require login.");
+    check((await unlinked.request(path)).status === 403, "Management lists require super admin.");
+    check((await unlinked.json(path, "POST", {})).status === 403, "Management mutations require super admin.");
+  }
+  const clientInput = { name: `${prefix}-managed-client`, email: "CONTACT@example.invalid", phone: "+62 812345678", type: "WEDDING_ORGANIZER" };
+  check((await admin.json("/api/admin/clients", "POST", { ...clientInput, name: " " })).status === 400, "Invalid client data is rejected server-side.");
+  check((await admin.json("/api/admin/clients", "POST", clientInput, "https://evil.example")).status === 403, "Management writes reject foreign origins.");
+  const newClientResponse = await admin.json("/api/admin/clients", "POST", clientInput);
+  check(newClientResponse.status === 201, "Admin can create clients.");
+  const managedClient = (await newClientResponse.json()).client;
+  clientIds.push(managedClient.id);
+  check(managedClient.email === "contact@example.invalid" && managedClient.status === "ACTIVE", "Client normalization and default status apply.");
+  check((await admin.json(`/api/admin/clients/${managedClient.id}`, "PATCH", { ...clientInput, name: `${prefix}-edited-client` })).ok, "Admin can edit clients.");
+  check((await admin.request(`/api/admin/clients/${managedClient.id}`)).ok, "Client detail is available.");
+  const filteredClients = await (await admin.request(`/api/admin/clients?q=${prefix}&type=WEDDING_ORGANIZER&status=ACTIVE&page=1`)).json();
+  check(filteredClients.total === 1 && filteredClients.clients[0].id === managedClient.id, "Client filters combine correctly.");
+  const eventInput = { clientId: managedClient.id, name: `${prefix}-managed-event`, slug: `${prefix}-managed`, date: "2031-06-20", time: "00:30", location: "Jakarta", status: "DRAFT" };
+  const newEventResponse = await admin.json("/api/admin/events", "POST", eventInput);
+  check(newEventResponse.status === 201, "Admin can create events.");
+  const managedEvent = (await newEventResponse.json()).event;
+  eventIds.push(managedEvent.id);
+  check(managedEvent.eventDate === "2031-06-19T17:30:00.000Z", "WIB event time is stored as UTC.");
+  check((await admin.json("/api/admin/events", "POST", eventInput)).status === 409, "Duplicate slugs return conflict without overwriting.");
+  check((await admin.json("/api/admin/events", "POST", { ...eventInput, slug: `${prefix}-invalid`, date: "2031-02-30" })).status === 400, "Impossible dates are rejected by server.");
+  check((await admin.json(`/api/admin/events/${managedEvent.id}`, "PATCH", { ...eventInput, clientId: clientIds[0] })).status === 409, "Event ownership cannot move across clients.");
+  check((await admin.json(`/api/admin/events/${managedEvent.id}`, "PATCH", { ...eventInput, status: "ACTIVE" })).ok, "Admin can edit event status.");
+  const filteredEvents = await (await admin.request(`/api/admin/events?clientId=${managedClient.id}&from=2031-06-20&to=2031-06-20&status=ACTIVE`)).json();
+  check(filteredEvents.total === 1 && filteredEvents.events[0].id === managedEvent.id, "Date filters use inclusive WIB days.");
+  check((await admin.request("/api/admin/events?from=2031-06-21&to=2031-06-20")).status === 400, "Inverted date filters are rejected.");
+  for (const path of ["/admin/clients", `/admin/clients/${managedClient.id}`, `/admin/clients/${managedClient.id}/edit`, "/admin/clients/new", "/admin/events", `/admin/events/${managedEvent.id}`, `/admin/events/${managedEvent.id}/edit`, "/admin/events/new", "/admin/staff"]) {
+    const response = await admin.request(path);
+    const html = await response.text();
+    check(response.ok && !html.includes('"digest":"') && !html.includes("Data belum dapat dimuat"), `Management page renders: ${path}`);
+  }
+  const managedStaff = new BrowserSession();
+  await managedStaff.login(`${prefix}-managed@example.invalid`);
+  const managedStaffId = createdBody.user.id;
+  for (const id of [eventIds[0], managedEvent.id]) check((await admin.json(`/api/admin/events/${id}/staff`, "PUT", { userIds: [managedStaffId] })).ok, "One staff can be assigned to multiple events.");
+  check((await managedStaff.request(`/api/events/${managedEvent.id}`)).ok, "Assigned staff can access new event.");
+  check((await admin.json(`/api/admin/events/${managedEvent.id}/staff`, "PUT", { userIds: [ids.unlinked] })).status === 400, "Non-staff users cannot be assigned.");
+  check((await admin.json(`/api/admin/events/${managedEvent.id}/staff`, "PUT", { userIds: [] })).ok, "Assignment can be removed.");
+  check((await managedStaff.request(`/api/events/${managedEvent.id}`)).status === 404, "Removal revokes access immediately.");
+  check((await managedStaff.request(`/api/events/${eventIds[0]}`)).ok, "Other event assignments are preserved.");
+  check((await admin.json(`/api/admin/events/${managedEvent.id}/staff`, "PUT", { userIds: [managedStaffId] })).ok, "Staff can be reassigned.");
+  const inactiveAccountResponse = await admin.json("/api/admin/users", "POST", { email: `${prefix}-inactive@example.invalid`, name: "Inactive Client", password, role: "CLIENT", clientId: managedClient.id });
+  check(inactiveAccountResponse.status === 201, "Managed client account can be linked.");
+  const inactiveAccount = (await inactiveAccountResponse.json()).user;
+  userIds.push(inactiveAccount.id);
+  const inactiveBrowser = new BrowserSession();
+  await inactiveBrowser.login(`${prefix}-inactive@example.invalid`);
+  check((await inactiveBrowser.request(`/api/events/${managedEvent.id}`)).ok, "Client can read own event before deactivation.");
+  check((await admin.json(`/api/admin/clients/${managedClient.id}/status`, "PATCH", { status: "INACTIVE" })).ok, "Client can be deactivated.");
+  check((await inactiveBrowser.request("/api/events")).status === 401, "Deactivation invalidates client sessions.");
+  await inactiveBrowser.login(`${prefix}-inactive@example.invalid`);
+  check(!(await inactiveBrowser.session())?.user, "Inactive clients cannot log in again.");
+  check((await managedStaff.request(`/api/events/${managedEvent.id}`)).status === 404, "Inactive clients block staff access.");
+  check((await admin.json("/api/admin/events", "POST", { ...eventInput, slug: `${prefix}-inactive-event` })).status === 409, "Inactive clients cannot receive new events.");
+  check(await prisma.event.count({ where: { id: managedEvent.id } }) === 1, "Deactivation preserves events.");
+  check(await prisma.eventStaff.count({ where: { eventId: managedEvent.id } }) === 1, "Deactivation preserves assignments.");
+  check((await admin.json(`/api/admin/clients/${managedClient.id}/status`, "PATCH", { status: "ACTIVE" })).ok, "Client can be reactivated.");
+  check((await managedStaff.request(`/api/events/${managedEvent.id}`)).ok, "Reactivation restores existing staff access.");
+  console.log(`Auth and management end-to-end: ${assertions} assertions passed.`);
 }
 
 main().catch((error) => {

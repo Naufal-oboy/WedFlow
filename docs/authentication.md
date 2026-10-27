@@ -135,10 +135,12 @@ Semua endpoint di bawah memerlukan cookie session Auth.js. Respons memakai
 
 CLIENT wajib memiliki `clientId`; STAFF menggunakan `clientId: null`.
 Role pada API akun hanya CLIENT/STAFF. Untuk menghapus seluruh penugasan event,
-kirim `userIds: []`. Dashboard menampilkan 20 event dan detail menampilkan
-maksimal 100 tamu; statistik menghitung seluruh data yang diizinkan.
-Pagination lanjutan dan CRUD client/event/undangan lengkap dapat dikembangkan
-di atas helper akses yang tersedia.
+kirim `userIds: []`. Dashboard client/staff menampilkan 20 event dan detail
+menampilkan maksimal 100 tamu; statistik menghitung seluruh data yang diizinkan.
+Dashboard admin, CRUD client/event, pagination, dan daftar staff dijelaskan di
+[Client & Event Management](./client-event-management.md). Client nonaktif tidak
+dapat login; staff kehilangan akses acara client nonaktif. Check-in hanya
+tersedia ketika status acara dan client aktif.
 
 ## Pengujian manual
 

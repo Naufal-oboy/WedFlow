@@ -32,7 +32,7 @@ test("redirects reject external, encoded, backslash and arbitrary destinations",
 test("client without ownership fails closed; staff is scoped by assignment", () => {
   const user = { id: "user", name: "Test", email: "test@example.com", clientId: null };
   assert.deepEqual(eventScope({ ...user, role: "CLIENT" }), { id: { in: [] } });
-  assert.deepEqual(eventScope({ ...user, role: "STAFF" }), { staffAssignments: { some: { userId: "user" } } });
+  assert.deepEqual(eventScope({ ...user, role: "STAFF" }), { client: { status: "ACTIVE" }, staffAssignments: { some: { userId: "user" } } });
 });
 test("account creation cannot promote to super admin or omit client ownership", () => {
   const base = { name: "Test", email: "test@example.com", password: "Strong test password!" };

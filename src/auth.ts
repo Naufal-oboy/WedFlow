@@ -33,6 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
         dummyHash ??= hash("invalid-account-comparison-only", 12);
         const valid = await compare(password, user?.passwordHash ?? await dummyHash);
         if (!user || !valid) return null;
+        if (user.role === "CLIENT" && user.clientId && !await prisma.client.findFirst({ where: { id: user.clientId, status: "ACTIVE" }, select: { id: true } })) return null;
         clearLoginAttempts(email);
         return {
           id: user.id, name: user.name, email: user.email, role: user.role,
@@ -50,6 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
         const current = await prisma.user.findUnique({ where: { id: token.sub }, select: safeUserSelect });
         // A changed password, role, or account link invalidates existing JWTs immediately.
         if (!current || current.updatedAt.toISOString() !== token.version) return null;
+        if (current.role === "CLIENT" && current.clientId && !await prisma.client.findFirst({ where: { id: current.clientId, status: "ACTIVE" }, select: { id: true } })) return null;
         token.name = current.name;
         token.email = current.email;
         token.role = current.role;
