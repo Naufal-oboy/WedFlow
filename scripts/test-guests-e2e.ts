@@ -2,6 +2,9 @@ import "dotenv/config";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/features/auth/password";
+import jsQR from "jsqr";
+import { PNG } from "pngjs";
+import { testQrBrowser } from "./test-qr-browser";
 
 const base = process.env.AUTH_TEST_URL ?? "http://localhost:3100";
 if (!["localhost", "127.0.0.1"].includes(new URL(base).hostname)) throw new Error("Use a local test server.");
@@ -55,6 +58,16 @@ async function main() {
   check(created.status === 201, "Admin creates a guest.");
   const guest = (await created.json()).guest;
   check(guest.guestName === "Budi Santoso" && guest.code.length >= 32, "Name normalization and random opaque code apply.");
+  async function checkGuestQr(invitation: { id: string; code: string }) {
+    const qrPath = `/api/admin/events/${eventIds[0]}/invitations/${invitation.id}`;
+    const response = await admin.request(`${qrPath}/qr?download=1`);
+    check(response.ok && response.headers.get("cache-control") === "private, no-store", "Guest Management invitations support private QR downloads.");
+    const png = PNG.sync.read(Buffer.from(await response.arrayBuffer()));
+    check(jsQR(new Uint8ClampedArray(png.data), png.width, png.height)?.data === invitation.code, "QR preserves the exact Guest Management code.");
+    const print = await admin.request(`${qrPath}/print`);
+    check(print.ok && (await print.text()).includes(invitation.code), "Guest Management invitations support print.");
+  }
+  await checkGuestQr(guest);
   const sameName = (await (await admin.json(path, "POST", input)).json()).guest;
   check(sameName.id !== guest.id && sameName.code !== guest.code, "Identical names get independent unique codes.");
   let uniqueRejected = false;
@@ -84,6 +97,7 @@ async function main() {
   check((await admin.json(`${path}/${guest.id}`, "PATCH", { guestName: "Budi Final", guestQuota: 3 })).ok, "Quota equal to attendance is accepted.");
   const after = (await (await admin.request(`${path}/${guest.id}`)).json()).guest;
   check(before.checkedInAt === after.checkedInAt && after.checkedInBy.id === before.checkedInBy.id && after.code === guest.code, "Editing preserves attendance history.");
+  await checkGuestQr(after);
   check((await admin.json(`${path}/${guest.id}`, "DELETE")).status === 409, "Checked-in guest cannot be deleted.");
   check((await staff.json("/api/checkins", "POST", checkin)).status === 409, "Repeat check-in is still rejected.");
   check((await admin.json(`${path}/${sameName.id}`, "DELETE")).ok, "Unused invitation can be deleted.");
@@ -129,6 +143,10 @@ async function main() {
   check((await admin.request(`${path}?page=-1`)).status === 400, "Invalid pagination is rejected.");
   const importedGuests = await prisma.invitation.findMany({ where: { eventId: eventIds[0], guestName: { startsWith: "Import " } } });
   check(new Set(importedGuests.map((row) => row.code)).size === 23, "Every imported row has a unique code.");
+  await checkGuestQr(importedGuests[0]);
+  if (process.env.QR_BROWSER_TESTS === "1") {
+    for (const invitation of [after, importedGuests[0]]) await testQrBrowser({ base, eventId: eventIds[0], invitationId: invitation.id, code: invitation.code, guestName: invitation.guestName, cookies: admin.cookies });
+  }
   const importedCheckin = { eventId: eventIds[0], code: importedGuests[0].code, count: 2 };
   check((await staff.json("/api/checkins", "POST", importedCheckin)).status === 201, "Imported code works with unchanged check-in API.");
   check((await clientB.request(`/api/checkins?eventId=${eventIds[0]}`)).status === 404, "Other client cannot read attendance.");
@@ -151,9 +169,10 @@ async function main() {
     const remaining = await prisma.invitation.findUnique({ where: { id: unused.id } });
     check(!results[1].ok || !!remaining?.checkedInAt, "Successful check-in history survives concurrent deletion.");
   }
-  for (const route of [`/admin/events/${eventIds[0]}/guests`, `/admin/events/${eventIds[0]}/guests/${guest.id}`]) {
+  for (const route of [`/admin/events/${eventIds[0]}/guests?sort=created_asc`, `/admin/events/${eventIds[0]}/guests/${guest.id}`]) {
     const response = await admin.request(route), html = await response.text();
     check(response.ok && html.includes("Budi Final") && !html.includes("Undangan belum dapat dimuat"), "Guest pages render with authenticated data.");
+    check(html.includes(`invitation-actions-${guest.id}`), "Guest list and detail expose QR actions.");
     const denied = await clientA.request(route);
     check(!(await denied.text()).includes(guest.code), "Client cannot read admin guest pages.");
   }

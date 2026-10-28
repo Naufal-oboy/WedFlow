@@ -13,6 +13,7 @@ import { guestFiltersSchema } from "./validation";
 import { getGuest, listGuests, requireGuestEvent } from "./service";
 import { DeleteGuestButton, GuestFormDialog } from "./guest-actions";
 import { ImportGuestDialog } from "./import-dialog";
+import { InvitationQrActions } from "@/features/invitations/qr-actions";
 
 async function pageData<T>(work: () => Promise<T>) {
   try { return await work(); }
@@ -36,7 +37,7 @@ export async function GuestListPage({ params, searchParams }: { params: Promise<
   const { event, guests, total, page, pageSize } = await pageData(() => listGuests(eventId, parsed.data));
   return <div className="space-y-6">
     <Link href={`/admin/events/${eventId}`} className="text-sm text-emerald-800 underline">← Kembali ke detail acara</Link>
-    <PageHeading title="Tamu & undangan" description={`Kelola daftar tamu untuk ${event.name}.`}><div className="flex flex-wrap gap-3"><ImportGuestDialog eventId={eventId} /><GuestFormDialog eventId={eventId} /></div></PageHeading>
+    <PageHeading title="Tamu & QR undangan" description={`Kelola daftar tamu untuk ${event.name}.`}><div className="flex flex-wrap gap-3"><ImportGuestDialog eventId={eventId} /><GuestFormDialog eventId={eventId} /></div></PageHeading>
     <form action={base} className="grid items-end gap-4 rounded-2xl border border-stone-200 bg-white p-5 sm:grid-cols-2 xl:grid-cols-4">
       <div className="space-y-2"><Label htmlFor="q">Cari tamu</Label><Input id="q" name="q" placeholder="Nama atau kode undangan" maxLength={150} defaultValue={parsed.data.q} /></div>
       <div className="space-y-2"><Label htmlFor="attendance">Kehadiran</Label><select id="attendance" name="attendance" className={selectClass} defaultValue={parsed.data.attendance}><option value="">Semua status</option><option value="present">Sudah hadir</option><option value="absent">Belum hadir</option></select></div>
@@ -45,8 +46,8 @@ export async function GuestListPage({ params, searchParams }: { params: Promise<
     </form>
     {guests.length ? <div className="overflow-hidden rounded-xl border border-stone-200 bg-white"><Table><TableHeader><TableRow><TableHead>Nama tamu</TableHead><TableHead>Kode undangan</TableHead><TableHead>Kuota</TableHead><TableHead>Kehadiran</TableHead><TableHead>Jumlah hadir</TableHead><TableHead>Check-in (WIB)</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader><TableBody>{guests.map((guest) => <TableRow key={guest.id}>
       <TableCell className="min-w-40 max-w-64 whitespace-normal"><Link href={`${base}/${guest.id}`} className="font-medium text-emerald-900 hover:underline">{guest.guestName}</Link></TableCell>
-      <TableCell><code className="text-xs">{guest.code}</code></TableCell><TableCell>{guest.guestQuota}</TableCell><TableCell><AttendanceBadge present={!!guest.checkedInAt} /></TableCell><TableCell>{guest.checkedInCount ?? 0}</TableCell><TableCell>{guest.checkedInAt ? formatEventDate(guest.checkedInAt) : "—"}</TableCell>
-      <TableCell><div className="flex items-center gap-2"><Link href={`${base}/${guest.id}`} className="px-2 text-emerald-800 underline">Detail</Link><GuestFormDialog eventId={eventId} guest={guest} /><DeleteGuestButton eventId={eventId} guestId={guest.id} guestName={guest.guestName} checkedIn={!!guest.checkedInAt || !!guest.checkedInCount} /></div></TableCell>
+      <TableCell><code className="block max-w-48 whitespace-normal break-all text-xs">{guest.code}</code></TableCell><TableCell>{guest.guestQuota}</TableCell><TableCell><AttendanceBadge present={!!guest.checkedInAt} /></TableCell><TableCell>{guest.checkedInCount ?? 0}</TableCell><TableCell>{guest.checkedInAt ? formatEventDate(guest.checkedInAt) : "—"}</TableCell>
+      <TableCell><div className="flex flex-wrap items-center gap-2"><InvitationQrActions eventId={eventId} invitationId={guest.id} guestName={guest.guestName} /><Link href={`${base}/${guest.id}`} className="px-2 text-emerald-800 underline">Detail</Link><GuestFormDialog eventId={eventId} guest={guest} /><DeleteGuestButton eventId={eventId} guestId={guest.id} guestName={guest.guestName} checkedIn={!!guest.checkedInAt || !!guest.checkedInCount} /></div></TableCell>
     </TableRow>)}</TableBody></Table></div> : <EmptyState title="Belum ada tamu yang cocok" description="Tambahkan tamu, impor CSV, atau sesuaikan filter pencarian." />}
     <Pagination base={base} params={query} total={total} page={page} pageSize={pageSize} />
   </div>;
@@ -64,7 +65,7 @@ export async function GuestDetailPage({ params }: { params: Promise<{ eventId: s
     ["Petugas check-in", guest.checkedInBy?.name ?? "—"], ["Dibuat (WIB)", formatEventDate(guest.createdAt)],
   ];
   return <div className="max-w-4xl space-y-6"><Link href={`/admin/events/${eventId}/guests`} className="text-sm text-emerald-800 underline">← Kembali ke daftar tamu</Link>
-    <PageHeading title="Detail undangan" description={event.name}><div className="flex gap-3"><GuestFormDialog eventId={eventId} guest={guest} /><DeleteGuestButton eventId={eventId} guestId={guest.id} guestName={guest.guestName} checkedIn={!!guest.checkedInAt || !!guest.checkedInCount || !!guest.checkedInBy} returnToList /></div></PageHeading>
+    <PageHeading title="Detail undangan" description={event.name}><div className="flex flex-wrap gap-3"><InvitationQrActions eventId={eventId} invitationId={guest.id} guestName={guest.guestName} /><GuestFormDialog eventId={eventId} guest={guest} /><DeleteGuestButton eventId={eventId} guestId={guest.id} guestName={guest.guestName} checkedIn={!!guest.checkedInAt || !!guest.checkedInCount || !!guest.checkedInBy} returnToList /></div></PageHeading>
     <div className="rounded-2xl border border-stone-200 bg-white p-6"><AttendanceBadge present={!!guest.checkedInAt} /><dl className="mt-6 grid gap-6 sm:grid-cols-2">{fields.map(([label, value]) => <div key={label}><dt className="text-sm text-stone-500">{label}</dt><dd className="mt-1 break-words font-medium text-emerald-950">{value}</dd></div>)}</dl></div>
     {guest.checkedInAt && <p className="text-sm text-stone-500">Undangan sudah check-in. Riwayat kehadiran dipertahankan dan penghapusan dinonaktifkan.</p>}
   </div>;

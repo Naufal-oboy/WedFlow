@@ -20,6 +20,9 @@ perubahan logika check-in. Pengelolaan undangan hanya tersedia untuk Super Admin
 6. **Detail** membuka `/admin/events/[eventId]/guests/[guestId]`, termasuk nama
    acara dan petugas check-in. Email/password petugas tidak disertakan.
 7. **Hapus** membutuhkan dialog konfirmasi dan hanya diizinkan sebelum check-in.
+8. **Lihat QR**, **Download QR**, dan **Print undangan** tersedia pada daftar dan
+   detail. QR memakai kode tersimpan tanpa rotasi, termasuk kode hasil impor.
+   Lihat [panduan QR Invitation](./qr-invitation.md).
 
 Tersedia skeleton, empty state, penanganan error/retry, pending state, validasi
 field, tabel yang dapat digulir horizontal, serta navigasi kembali ke acara.

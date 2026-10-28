@@ -29,6 +29,12 @@ Pengelolaan client dan acara, filter/pagination, penugasan staff, serta ringkasa
 admin tersedia di dashboard. Lihat [panduan Client & Event Management](./docs/client-event-management.md)
 untuk keputusan implementasi, daftar file, migrasi aman, dan langkah pengujian.
 
+QR Invitation Generation tersedia melalui **Kelola tamu & QR** di detail event:
+tambah/edit tamu, impor CSV dengan preview, QR unik, download PNG, dan print
+undangan. Akses dibatasi untuk Super Admin; token tidak berisi data pribadi dan
+kompatibel dengan check-in yang sudah ada. Lihat [panduan QR Invitation](./docs/qr-invitation.md)
+untuk format token, keamanan, penanganan kode lama, dan pengujian.
+
 Pengelolaan tamu dan undangan per acara, pencarian/filter/pagination, detail,
 edit kuota, penghapusan sebelum check-in, serta impor CSV dengan preview dan
 konfirmasi tersedia untuk Super Admin. Lihat [Guest & Invitation Management](./docs/guest-management.md).
@@ -262,9 +268,10 @@ Status berikut merupakan **rencana pengembangan**, bukan klaim bahwa semua modul
 - [x] Dashboard awal Super Admin, Client, dan Staff.
 - [x] CRUD Client dan Event Management.
 - [x] Penugasan staff ke event.
-- [x] Manajemen tamu, kuota, dan impor CSV dengan preview/validasi.
-- [ ] Dukungan impor Excel (.xlsx).
-- [ ] Pembuatan dan pemindaian QR undangan personal.
+- [x] Daftar, tambah/edit tamu, kuota, dan impor CSV dengan preview.
+- [ ] Impor Excel.
+- [x] Pembuatan QR undangan personal, download PNG, dan print.
+- [ ] Pemindaian QR undangan personal melalui kamera.
 - [ ] Smart Name Search untuk tamu tanpa QR.
 - [ ] Public QR Pre-check-in dan pass sementara.
 - [ ] Dashboard kehadiran real-time dan laporan.
