@@ -4,6 +4,7 @@ import { compare } from "bcryptjs";
 import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/features/auth/password";
 import { bootstrapSuperAdmin } from "../src/features/auth/bootstrap";
+import { testQrHttp } from "./test-qr-http";
 
 // Uses uniquely identified temporary fixtures; never deletes existing application records.
 const base = process.env.AUTH_TEST_URL ?? "http://localhost:3100";
@@ -112,6 +113,7 @@ async function main() {
     sessions.set(name, session);
   }
   const admin = sessions.get("admin")!, clientA = sessions.get("clienta")!, clientB = sessions.get("clientb")!, staff = sessions.get("staff")!, unlinked = sessions.get("unlinked")!;
+  await testQrHttp({ admin, guest, client: clientA, staff, eventIds, invitationIds, base });
   for (const browser of [clientA, clientB, staff]) {
     check((await browser.request("/api/admin/users")).status === 403, "Only admins can read accounts.");
     check((await browser.json("/api/admin/users", "POST", {})).status === 403, "Only admins can create accounts.");
@@ -138,7 +140,7 @@ async function main() {
   const writes = await Promise.all([staff.json("/api/checkins", "POST", checkin), staff.json("/api/checkins", "POST", checkin)]);
   check(writes.map((r) => r.status).sort().join(",") === "201,409", "Concurrent check-in must be recorded exactly once.");
   const report = await (await clientA.request(`/api/checkins?eventId=${eventIds[0]}`)).json();
-  check(report.invitations[0].checkedInCount === 2, "Client report must show correct attendance.");
+  check(report.invitations.find((invitation: { id: string }) => invitation.id === invitationIds[0]).checkedInCount === 2, "Client report must show correct attendance.");
 
   const createdResponse = await admin.json("/api/admin/users", "POST", { email: `${prefix}-managed@example.invalid`, name: "Managed Staff", password, role: "STAFF" });
   check(createdResponse.status === 201, "Admin can create staff accounts.");
@@ -235,7 +237,7 @@ main().catch((error) => {
   process.exitCode = 1;
 }).finally(async () => {
   try {
-    await prisma.invitation.deleteMany({ where: { id: { in: invitationIds } } });
+    await prisma.invitation.deleteMany({ where: { eventId: { in: eventIds } } });
     await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
     await prisma.client.deleteMany({ where: { id: { in: clientIds } } });

@@ -29,6 +29,12 @@ Pengelolaan client dan acara, filter/pagination, penugasan staff, serta ringkasa
 admin tersedia di dashboard. Lihat [panduan Client & Event Management](./docs/client-event-management.md)
 untuk keputusan implementasi, daftar file, migrasi aman, dan langkah pengujian.
 
+QR Invitation Generation tersedia melalui **Kelola tamu & QR** di detail event:
+tambah/edit tamu, impor CSV dengan preview, QR unik, download PNG, dan print
+undangan. Akses dibatasi untuk Super Admin; token tidak berisi data pribadi dan
+kompatibel dengan check-in yang sudah ada. Lihat [panduan QR Invitation](./docs/qr-invitation.md)
+untuk format token, keamanan, penanganan kode lama, dan pengujian.
+
 Keunggulan utama WedFlow adalah **alur check-in alternatif ketika tamu tidak membawa atau lupa QR undangan**, sehingga proses penerimaan tamu tidak sepenuhnya bergantung pada satu metode verifikasi.
 
 > **Status pengembangan:** Project masih dalam tahap pembangunan. Fitur yang dijelaskan di bawah merupakan cakupan produk yang direncanakan; ketersediaan setiap fitur perlu diperiksa pada implementasi terbaru.
@@ -258,8 +264,10 @@ Status berikut merupakan **rencana pengembangan**, bukan klaim bahwa semua modul
 - [x] Dashboard awal Super Admin, Client, dan Staff.
 - [x] CRUD Client dan Event Management.
 - [x] Penugasan staff ke event.
-- [ ] Manajemen tamu, kuota, dan impor CSV/Excel.
-- [ ] Pembuatan dan pemindaian QR undangan personal.
+- [x] Daftar, tambah/edit tamu, kuota, dan impor CSV dengan preview.
+- [ ] Impor Excel.
+- [x] Pembuatan QR undangan personal, download PNG, dan print.
+- [ ] Pemindaian QR undangan personal melalui kamera.
 - [ ] Smart Name Search untuk tamu tanpa QR.
 - [ ] Public QR Pre-check-in dan pass sementara.
 - [ ] Dashboard kehadiran real-time dan laporan.
