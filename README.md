@@ -35,6 +35,10 @@ undangan. Akses dibatasi untuk Super Admin; token tidak berisi data pribadi dan
 kompatibel dengan check-in yang sudah ada. Lihat [panduan QR Invitation](./docs/qr-invitation.md)
 untuk format token, keamanan, penanganan kode lama, dan pengujian.
 
+Pengelolaan tamu dan undangan per acara, pencarian/filter/pagination, detail,
+edit kuota, penghapusan sebelum check-in, serta impor CSV dengan preview dan
+konfirmasi tersedia untuk Super Admin. Lihat [Guest & Invitation Management](./docs/guest-management.md).
+
 Keunggulan utama WedFlow adalah **alur check-in alternatif ketika tamu tidak membawa atau lupa QR undangan**, sehingga proses penerimaan tamu tidak sepenuhnya bergantung pada satu metode verifikasi.
 
 > **Status pengembangan:** Project masih dalam tahap pembangunan. Fitur yang dijelaskan di bawah merupakan cakupan produk yang direncanakan; ketersediaan setiap fitur perlu diperiksa pada implementasi terbaru.

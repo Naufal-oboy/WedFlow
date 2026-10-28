@@ -4,9 +4,10 @@ import { chromium, expect } from "@playwright/test";
 import jsQR from "jsqr";
 import { PNG } from "pngjs";
 
-export async function testQrBrowser({ base, eventId, invitationId, code, cookies }: {
+export async function testQrBrowser({ base, eventId, invitationId, code, cookies, guestName = "Updated QR guest" }: {
   base: string; eventId: string; invitationId: string; code: string;
   cookies: Map<string, string>;
+  guestName?: string;
 }) {
   const browser = await chromium.launch({ channel: process.env.QR_BROWSER_CHANNEL || "msedge", headless: true });
   try {
@@ -17,14 +18,14 @@ export async function testQrBrowser({ base, eventId, invitationId, code, cookies
     const page = await context.newPage();
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.goto(`${base}/admin/events/${eventId}/guests`);
+    await page.goto(`${base}/admin/events/${eventId}/guests?q=${encodeURIComponent(code)}`);
     const actions = page.getByTestId(`invitation-actions-${invitationId}`);
     await expect(actions).toBeVisible();
     await actions.getByRole("button", { name: "Lihat QR" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByText(code, { exact: true })).toBeVisible();
     await expect(dialog.getByRole("img")).toBeVisible();
-    await expect(dialog.getByRole("heading", { name: "Updated QR guest" })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: guestName, exact: true })).toBeVisible();
     const image = await dialog.getByRole("img").getAttribute("src");
     await dialog.getByRole("button", { name: "Close", exact: true }).click();
     await expect(dialog).not.toBeVisible();

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { test } from "node:test";
 import jsQR from "jsqr";
 import { PNG } from "pngjs";
@@ -55,8 +55,19 @@ test("regenerating an image from a stored code is deterministic", async () => {
   assert.deepEqual(await invitationPng(code), await invitationPng(code));
 });
 
+test("Guest Management random and import codes retain their exact QR payloads", async () => {
+  // Both byte lengths used by Guest Management; HTTP tests exercise its actual
+  // create/import endpoints and verify their persisted codes through the decoder.
+  for (const bytes of [24, 32]) {
+    const code = randomBytes(bytes).toString("base64url");
+    assert.equal(invitationPayload(code), code);
+    const png = PNG.sync.read(await invitationPng(code));
+    assert.equal(jsQR(new Uint8ClampedArray(png.data), png.width, png.height)?.data, code);
+  }
+});
+
 test("legacy personal codes, URLs, and malformed tokens cannot become QR payloads", () => {
-  for (const value of ["", "Jane Doe", "jane@example.com", "+628123456789", "https://evil.example", "WF-1234", `WF-${"g".repeat(64)}`]) {
+  for (const value of ["", "Jane Doe", "jane@example.com", "+628123456789", "https://evil.example", "WF-1234", `WF-${"g".repeat(64)}`, "a".repeat(31), "a".repeat(33), "a".repeat(42) + "B"]) {
     assert.throws(() => invitationPayload(value));
   }
 });

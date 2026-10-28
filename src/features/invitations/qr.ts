@@ -8,7 +8,9 @@ export function generateInvitationCode() {
   return `WF-${randomBytes(32).toString("hex")}`;
 }
 
-export const qrCodeSchema = z.string().regex(/^WF-[a-f0-9]{64}$/);
+// Guest Management already issues 24-byte random and 32-byte HMAC base64url
+// codes. Preserve those identities, including import replay protection.
+export const qrCodeSchema = z.string().regex(/^(?:WF-[a-f0-9]{64}|[A-Za-z0-9_-]{32}|[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048])$/);
 
 export function invitationPayload(code: string) {
   return qrCodeSchema.parse(code);
