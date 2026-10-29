@@ -5,6 +5,7 @@ import { hashPassword } from "../src/features/auth/password";
 import jsQR from "jsqr";
 import { PNG } from "pngjs";
 import { testQrBrowser } from "./test-qr-browser";
+import { checkinPayload } from "./checkin-test-helper";
 
 const base = process.env.AUTH_TEST_URL ?? "http://localhost:3100";
 if (!["localhost", "127.0.0.1"].includes(new URL(base).hostname)) throw new Error("Use a local test server.");
@@ -87,8 +88,8 @@ async function main() {
   check((await (await admin.request(other)).json()).total === 0, "Other event list stays empty.");
   const edited = await admin.json(`${path}/${guest.id}`, "PATCH", { guestName: "Budi Updated", guestQuota: 4 });
   check(edited.ok && (await edited.json()).guest.code === guest.code, "Editing retains the invitation code.");
-  const checkin = { eventId: eventIds[0], code: guest.code, count: 3 };
-  check((await staff.json("/api/checkins", "POST", { ...checkin, count: 5 })).status === 400, "Existing check-in quota validation remains active.");
+  const checkin = await checkinPayload(staff, eventIds[0], guest.code, 3);
+  check((await staff.json("/api/checkins", "POST", { ...checkin, count: 5 })).status === 409, "Existing check-in quota validation remains active.");
   check((await staff.json("/api/checkins", "POST", checkin)).status === 201, "Created invitation works with existing check-in.");
   const before = (await (await admin.request(`${path}/${guest.id}`)).json()).guest;
   check(before.checkedInBy.id === userIds[1] && before.checkedInCount === 3 && before.checkedInAt, "Detail includes correct attendance and operator.");
@@ -99,7 +100,7 @@ async function main() {
   check(before.checkedInAt === after.checkedInAt && after.checkedInBy.id === before.checkedInBy.id && after.code === guest.code, "Editing preserves attendance history.");
   await checkGuestQr(after);
   check((await admin.json(`${path}/${guest.id}`, "DELETE")).status === 409, "Checked-in guest cannot be deleted.");
-  check((await staff.json("/api/checkins", "POST", checkin)).status === 409, "Repeat check-in is still rejected.");
+  check((await staff.json("/api/checkins", "POST", checkin)).status === 200, "Retry returns the prior arrival without incrementing attendance.");
   check((await admin.json(`${path}/${sameName.id}`, "DELETE")).ok, "Unused invitation can be deleted.");
   check((await admin.request(`${path}/${sameName.id}`)).status === 404, "Deleted invitation is no longer found.");
   check(await prisma.event.count({ where: { id: eventIds[0] } }) === 1, "Guest deletion preserves the event.");
@@ -147,10 +148,10 @@ async function main() {
   if (process.env.QR_BROWSER_TESTS === "1") {
     for (const invitation of [after, importedGuests[0]]) await testQrBrowser({ base, eventId: eventIds[0], invitationId: invitation.id, code: invitation.code, guestName: invitation.guestName, cookies: admin.cookies });
   }
-  const importedCheckin = { eventId: eventIds[0], code: importedGuests[0].code, count: 2 };
-  check((await staff.json("/api/checkins", "POST", importedCheckin)).status === 201, "Imported code works with unchanged check-in API.");
+  const importedCheckin = await checkinPayload(staff, eventIds[0], importedGuests[0].code, 2);
+  check((await staff.json("/api/checkins", "POST", importedCheckin)).status === 201, "Imported code works with verified check-in API.");
   check((await clientB.request(`/api/checkins?eventId=${eventIds[0]}`)).status === 404, "Other client cannot read attendance.");
-  check((await staff.json("/api/checkins", "POST", { ...importedCheckin, eventId: eventIds[1] })).status === 404, "Imported codes remain event-scoped.");
+  check((await staff.json("/api/checkins/verify", "POST", { code: importedGuests[0].code, method: "MANUAL", eventId: eventIds[1] })).status === 404, "Imported codes remain event-scoped.");
   const duplicateCsv = "guestName,guestQuota\nBudi Final,1\nNew Same Name,1\nnew same name,2";
   const duplicate = await (await admin.json(`${path}/import`, "POST", { mode: "preview", csv: duplicateCsv })).json();
   check(duplicate.duplicates === 3, "Preview detects existing and within-file duplicate names.");
@@ -160,11 +161,13 @@ async function main() {
   // Race changes against the existing check-in conditional update.
   for (let index = 0; index < 3; index++) {
     const race = (await (await admin.json(path, "POST", { guestName: `Race ${index}`, guestQuota: 5 })).json()).guest;
-    await Promise.all([admin.json(`${path}/${race.id}`, "PATCH", { guestName: `Race ${index}`, guestQuota: 1 }), staff.json("/api/checkins", "POST", { eventId: eventIds[0], code: race.code, count: 5 })]);
+    const racePayload = await checkinPayload(staff, eventIds[0], race.code, 5);
+    await Promise.all([admin.json(`${path}/${race.id}`, "PATCH", { guestName: `Race ${index}`, guestQuota: 1 }), staff.json("/api/checkins", "POST", racePayload)]);
     const saved = await prisma.invitation.findUniqueOrThrow({ where: { id: race.id } });
     check(saved.guestQuota >= (saved.checkedInCount ?? 0), "Concurrent quota edit never drops below attendance.");
     const unused = (await (await admin.json(path, "POST", { guestName: `Delete race ${index}`, guestQuota: 1 })).json()).guest;
-    const results = await Promise.all([admin.json(`${path}/${unused.id}`, "DELETE"), staff.json("/api/checkins", "POST", { eventId: eventIds[0], code: unused.code, count: 1 })]);
+    const deletePayload = await checkinPayload(staff, eventIds[0], unused.code, 1);
+    const results = await Promise.all([admin.json(`${path}/${unused.id}`, "DELETE"), staff.json("/api/checkins", "POST", deletePayload)]);
     check(!(results[0].ok && results[1].ok), "Delete and check-in cannot both succeed.");
     const remaining = await prisma.invitation.findUnique({ where: { id: unused.id } });
     check(!results[1].ok || !!remaining?.checkedInAt, "Successful check-in history survives concurrent deletion.");
@@ -184,6 +187,7 @@ main().catch((error) => {
 }).finally(async () => {
   try {
     // IDs below belong exclusively to this test invocation, including imported invitations.
+    await prisma.checkinLog.deleteMany({ where: { eventId: { in: eventIds } } });
     await prisma.invitation.deleteMany({ where: { eventId: { in: eventIds } } });
     await prisma.eventStaff.deleteMany({ where: { eventId: { in: eventIds } } });
     await prisma.event.deleteMany({ where: { id: { in: eventIds } } });

@@ -136,24 +136,19 @@ dialog cetak tidak dicatat sebagai bukti bahwa printer fisik berhasil mencetak.
 
 ## Integrasi check-in
 
-Tidak ada perubahan kontrak [endpoint check-in](../src/app/api/checkins/route.ts).
-Hasil decode QR dapat dikirim langsung sebagai `code`:
+Sejak Sprint 5, hasil decode dikirim ke `POST /api/checkins/verify` dengan
+`{eventId, method:"QR", code}`. Server memeriksa role, penugasan, event aktif,
+dan identitas kode, lalu mengembalikan detail dan token verifikasi. Petugas
+mengonfirmasi melalui `POST /api/checkins` dengan
+`{eventId, verificationToken, confirmed:true, count}`. Payload langsung lama
+tidak lagi diterima. QR yang sama dapat digunakan untuk kedatangan bertahap
+selama sisa kuota tersedia, dengan verifikasi baru setiap kedatangan.
 
-```json
-{ "eventId": "UUID event yang dipilih petugas", "code": "WF-...", "count": 2 }
-```
-
-Server tetap memeriksa session admin/staff, penugasan staff, event dan client
-aktif, kode yang cocok dengan event, dan kuota. Update bersyarat terhadap
-`checkedInAt: null` dilakukan atomik di database. Dua permintaan simultan dengan
-token sama menghasilkan satu sukses `201` dan satu konflik `409`; replay juga
-ditolak. Token tetap sama setelah check-in, tetapi tidak dapat dipakai kembali.
-
-PRD membahas kemungkinan kehadiran bertahap; implementasi check-in saat ini adalah
-**sekali per undangan**, sesuai scope sprint dan endpoint yang sudah berjalan.
-Sisa kuota setelah check-in parsial tidak dapat dipakai untuk check-in kedua.
-Tidak ada scanner kamera, Smart Name Search, public pre-check-in, dashboard
-real-time, payment, atau designer undangan dalam perubahan ini.
+Token verifikasi yang sama hanya menghasilkan satu kedatangan, termasuk saat
+retry/concurrent request. `checkedInAt` tetap waktu pertama, jumlah kumulatif
+dan riwayat diperbarui atomik. Scanner kamera, pencarian nama, fallback manual,
+migrasi, dan pengujian dijelaskan dalam [Smart Check-in](./smart-checkin.md).
+Public pre-check-in, real-time WebSocket, payment, dan booking tetap di luar scope.
 
 ## Pengujian
 

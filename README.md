@@ -41,6 +41,12 @@ konfirmasi tersedia untuk Super Admin. Lihat [Guest & Invitation Management](./d
 
 Keunggulan utama WedFlow adalah **alur check-in alternatif ketika tamu tidak membawa atau lupa QR undangan**, sehingga proses penerimaan tamu tidak sepenuhnya bergantung pada satu metode verifikasi.
 
+Sprint 5 menyediakan Smart Name Search toleran typo, scanner kamera, input kode
+manual, dan dialog verifikasi petugas. Kehadiran keluarga dapat dicatat bertahap
+sesuai sisa kuota, dengan riwayat, transaksi atomik, dan retry idempotent.
+Lihat [Smart Check-in](./docs/smart-checkin.md) untuk migrasi `pg_trgm`, perubahan
+kontrak API (verify lalu confirm), pengujian, dan panduan HP melalui HTTPS.
+
 > **Status pengembangan:** Project masih dalam tahap pembangunan. Fitur yang dijelaskan di bawah merupakan cakupan produk yang direncanakan; ketersediaan setiap fitur perlu diperiksa pada implementasi terbaru.
 
 ## ✨ Fitur Utama
@@ -116,7 +122,7 @@ flowchart TD
 | Authentication | Auth.js / NextAuth (Credentials Provider) |
 | Password Hashing | bcryptjs |
 | Validasi | Zod |
-| QR Code | `qrcode` dan `html5-qrcode` *(untuk modul QR)* |
+| QR Code | `qrcode` untuk generate; `jsQR` untuk decoder scanner kamera |
 
 ## 📁 Struktur Project
 
@@ -271,8 +277,9 @@ Status berikut merupakan **rencana pengembangan**, bukan klaim bahwa semua modul
 - [x] Daftar, tambah/edit tamu, kuota, dan impor CSV dengan preview.
 - [ ] Impor Excel.
 - [x] Pembuatan QR undangan personal, download PNG, dan print.
-- [ ] Pemindaian QR undangan personal melalui kamera.
-- [ ] Smart Name Search untuk tamu tanpa QR.
+- [x] Pemindaian QR undangan personal melalui kamera dengan konfirmasi petugas.
+- [x] Smart Name Search untuk tamu tanpa QR.
+- [x] Check-in bertahap, riwayat kedatangan, proteksi kuota dan replay.
 - [ ] Public QR Pre-check-in dan pass sementara.
 - [ ] Dashboard kehadiran real-time dan laporan.
 - [ ] Pengujian keamanan, performa, dan deployment.

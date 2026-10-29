@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser, AccessError } from "@/features/auth/access";
 import { eventScope } from "@/features/events/scope";
 import { apiHandler, apiJson, requireSameOrigin } from "@/lib/api";
-
-const checkinSchema = z.object({ eventId: z.string().uuid(), code: z.string().min(1).max(200), count: z.number().int().min(1).max(1000) });
+import { readGuestJson } from "@/features/guests/request";
+import { confirmSchema } from "@/features/checkins/validation";
+import { checkinUser, recordArrival } from "@/features/checkins/service";
 
 export async function GET(request: Request) {
   return apiHandler(async () => {
@@ -22,19 +23,9 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   return apiHandler(async () => {
-    const user = await requireApiUser(["SUPER_ADMIN", "STAFF"]);
+    const user = await checkinUser();
     requireSameOrigin(request);
-    const input = checkinSchema.parse(await request.json());
-    const where = { code: input.code, eventId: input.eventId, event: { AND: [eventScope(user), { status: "ACTIVE", client: { status: "ACTIVE" as const } }] } };
-    const invitation = await prisma.invitation.findFirst({ where, select: { id: true, guestQuota: true } });
-    if (!invitation) throw new AccessError(404, "Undangan tidak ditemukan.");
-    if (input.count > invitation.guestQuota) throw new AccessError(400, "Jumlah tamu melebihi kuota undangan.");
-    // The conditional update prevents two staff requests checking in the same invitation twice.
-    const result = await prisma.invitation.updateMany({
-      where: { ...where, id: invitation.id, checkedInAt: null, guestQuota: { gte: input.count } },
-      data: { checkedInAt: new Date(), checkedInById: user.id, checkedInCount: input.count },
-    });
-    if (!result.count) throw new AccessError(409, "Undangan sudah check-in atau akses berubah.");
-    return apiJson({ success: true }, 201);
+    const result = await recordArrival(user, confirmSchema.parse(await readGuestJson(request)));
+    return apiJson(result, result.replayed ? 200 : 201);
   });
 }

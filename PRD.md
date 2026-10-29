@@ -431,7 +431,7 @@ Semua route adalah rancangan; penamaan dapat disesuaikan dengan struktur aplikas
 ## 19. Keputusan Produk yang Masih Terbuka
 
 1. Apakah satu akun Client dapat mengakses beberapa client/organisasi?
-2. Apakah kuota keluarga dapat digunakan bertahap di beberapa waktu kedatangan?
+2. Diputuskan pada Sprint 5: kuota keluarga dapat digunakan bertahap dengan verifikasi baru per kedatangan dan riwayat terpisah.
 3. Apakah check-in perlu mode override oleh koordinator, dan siapa yang berwenang?
 4. Apakah pass pre-check-in berlaku 2, 5, atau 10 menit? Tentukan lewat pilot.
 5. Apakah dashboard Client hanya baca atau boleh mengedit daftar tamu?
@@ -452,4 +452,26 @@ Sebuah fitur dinyatakan selesai apabila:
 
 ---
 
-**Dokumen ini merupakan baseline PRD WedFlow v1.0** dan dapat direvisi setelah audit repository, diskusi dengan calon client/WO, serta uji coba di acara nyata.
+## 21. Implementasi Sprint 5
+
+Smart Name Search (partial/case-insensitive/typo), scanner kamera, fallback kode
+manual, dan check-in bertahap tersedia pada dashboard event Staff/Super Admin.
+Pemilihan nama atau hasil scan hanya membuka verifikasi; petugas wajib
+mengonfirmasi undangan serta jumlah kedatangan. Nama duplikat tetap terpisah.
+
+`Invitation.checkedInCount` menyimpan total kumulatif; `checkedInAt` dan
+`checkedInById` menyimpan kedatangan pertama. `CheckinLog` menyimpan setiap
+kedatangan, metode, waktu, petugas, dan identitas retry. Data lama dibackfill
+tanpa menambah total. Request bersamaan dan retry tidak melampaui kuota.
+Perubahan kondisi undangan setelah verifikasi mewajibkan verifikasi ulang.
+
+Kontrak aktual: GET `/api/checkins/search`, POST `/api/checkins/verify`, GET
+`/api/checkins/detail`, POST `/api/checkins` (token verifikasi, konfirmasi, count),
+dan GET `/api/checkins/history`. API laporan GET lama tetap tersedia bagi Client
+sesuai kepemilikan. Detail ada pada [Smart Check-in](./docs/smart-checkin.md).
+
+Belum termasuk public QR pre-check-in, WebSocket, pembayaran, booking, atau
+offline-first. Validasi HP fisik dan uji beban tetap bagian pilot operasional.
+
+**Dokumen ini merupakan baseline PRD WedFlow v1.0** dengan keputusan implementasi
+Sprint 5, dan dapat direvisi setelah audit serta uji coba di acara nyata.

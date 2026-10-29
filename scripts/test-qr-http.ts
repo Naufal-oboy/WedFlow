@@ -3,6 +3,7 @@ import jsQR from "jsqr";
 import { PNG } from "pngjs";
 import { prisma } from "../src/lib/prisma";
 import { testQrBrowser } from "./test-qr-browser";
+import { checkinPayload } from "./checkin-test-helper";
 
 type HttpSession = {
   cookies: Map<string, string>;
@@ -69,12 +70,12 @@ export async function testQrHttp({ admin, guest, client, staff, eventIds, invita
   if (process.env.QR_BROWSER_TESTS === "1") {
     await testQrBrowser({ base, eventId: eventIds[0], invitationId: stored.id, code: stored.code, cookies: admin.cookies });
   }
-  const checkin = { eventId: eventIds[0], code, count: 2 };
-  assert.equal((await admin.json("/api/checkins", "POST", { ...checkin, eventId: eventIds[1] })).status, 404, "Code cannot be used for a different event even by admin");
-  assert.equal((await staff.json("/api/checkins", "POST", { ...checkin, count: 5 })).status, 400);
+  const checkin = await checkinPayload(staff, eventIds[0], code!, 2, "QR");
+  assert.equal((await admin.json("/api/checkins/verify", "POST", { method: "QR", code, eventId: eventIds[1] })).status, 404, "Code cannot be used for a different event even by admin");
+  assert.equal((await staff.json("/api/checkins", "POST", { ...checkin, count: 5 })).status, 409);
   const writes = await Promise.all([staff.json("/api/checkins", "POST", checkin), staff.json("/api/checkins", "POST", checkin)]);
-  assert.deepEqual(writes.map((response) => response.status).sort(), [201, 409], "Same QR cannot check in twice concurrently");
-  assert.equal((await staff.json("/api/checkins", "POST", checkin)).status, 409, "Replay is rejected");
+  assert.deepEqual(writes.map((response) => response.status).sort(), [200, 201], "Same verification cannot check in twice concurrently");
+  assert.equal((await staff.json("/api/checkins", "POST", checkin)).status, 200, "Replay returns prior result");
   assert.equal((await admin.json(path, "PATCH", input)).status, 409, "Checked-in quota/history cannot be overwritten");
   const attended = await (await admin.request(`${path}/qr`)).json();
   assert.ok(attended.invitation.checkedInAt);

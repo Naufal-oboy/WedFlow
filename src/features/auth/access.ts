@@ -5,6 +5,8 @@ import { connection } from "next/server";
 import type { Role } from "@/generated/prisma/enums";
 import { auth } from "@/auth";
 import { roleHome } from "./roles";
+import { AccessError } from "@/lib/access-error";
+export { AccessError } from "@/lib/access-error";
 
 export const getCurrentUser = cache(async () => {
   // Auth.js uses cryptographic randomness. Keep it outside speculative prerenders.
@@ -17,10 +19,6 @@ export async function requirePageRole(role: Role) {
   if (!user) redirect("/login");
   if (user.role !== role) redirect(roleHome[user.role]);
   return user;
-}
-
-export class AccessError extends Error {
-  constructor(public status: number, message: string) { super(message); }
 }
 
 export async function requireApiUser(roles?: readonly Role[]) {
