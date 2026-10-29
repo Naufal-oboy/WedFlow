@@ -64,7 +64,9 @@ hanya menambah:
 - `EventStaff`: relasi banyak-ke-banyak antara staff dan event, dengan kunci
   gabungan yang mencegah penugasan ganda.
 - `Invitation.checkedInAt`, `checkedInById`, `checkedInCount`: pencatatan
-  kehadiran. Update bersyarat mencegah check-in undangan yang sama dua kali.
+  kehadiran. Sejak Sprint 5, jumlah hadir kumulatif dan metadata kedatangan
+  pertama dipertahankan; transaksi dan CheckinLog mencegah replay serta kuota
+  terlampaui. Lihat [Smart Check-in](./smart-checkin.md).
 
 Model User dan enum Role yang sudah ada digunakan kembali. Tidak ada reset,
 penghapusan tabel, atau perubahan data lama. Akun CLIENT lama tanpa `clientId`
@@ -125,7 +127,7 @@ Semua endpoint di bawah memerlukan cookie session Auth.js. Respons memakai
 | `GET /api/events` | Semua role, hasil dibatasi scope; maksimal 100 event |
 | `GET /api/events/:id` | Detail event dalam scope |
 | `GET /api/checkins?eventId=...` | Daftar tamu/kehadiran dalam scope, maksimal 200 |
-| `POST /api/checkins` | SUPER_ADMIN/STAFF; body `{ eventId, code, count }` |
+| `POST /api/checkins` | SUPER_ADMIN/STAFF; body `{ eventId, verificationToken, confirmed:true, count }` setelah `/api/checkins/verify`; lihat [Smart Check-in](./smart-checkin.md) |
 | `GET /api/admin/users` | SUPER_ADMIN; atribut aman, maksimal 100 akun |
 | `POST /api/admin/users` | SUPER_ADMIN; `{ name, email, password, role, clientId }` |
 | `PATCH /api/admin/users/:id` | SUPER_ADMIN; `{ name, role, clientId, password? }` |

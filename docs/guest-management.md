@@ -145,14 +145,15 @@ formula pada seluruh field teks dan quoting CSV yang sesuai.
 
 ## Integrasi check-in
 
-Endpoint lama `POST /api/checkins` tetap menerima `{ eventId, code, count }`.
-Kode hasil tambah manual dan impor langsung dapat digunakan oleh Super Admin
-atau staff yang ditugaskan. Aturan acara/client aktif, kuota, pencegahan
-check-in ganda, waktu, serta petugas tetap memakai implementasi sebelumnya.
-
-Saat ini satu undangan hanya boleh check-in sekali. Kedatangan bertahap yang
-direncanakan dalam PRD belum diimplementasikan pada sprint ini. QR scanner,
-public pre-check-in, realtime, XLSX, booking, dan pembayaran di luar cakupan.
+Sejak Sprint 5, kode hasil tambah/impor diverifikasi melalui
+`POST /api/checkins/verify`, kemudian dikonfirmasi melalui `POST /api/checkins`
+dengan `{eventId, verificationToken, confirmed:true, count}`. Payload langsung
+`{eventId,code,count}` tidak lagi diterima. Kuota dapat dipakai bertahap;
+`checkedInAt` dan petugas pada undangan tetap merujuk kedatangan pertama,
+`checkedInCount` menjadi total kumulatif, dan `CheckinLog` menyimpan tiap arrival.
+Lihat [Smart Check-in](./smart-checkin.md) untuk scanner, pencarian nama,
+keamanan, migrasi/backfill, retry, dan concurrency. Pengelolaan tamu tetap hanya
+Super Admin; kode undangan tidak berubah.
 
 ## Pengujian
 

@@ -49,6 +49,7 @@ model Event {
   client           Client       @relation(fields: [clientId], references: [id])
   invitations      Invitation[]
   staffAssignments EventStaff[]
+  checkinLogs      CheckinLog[]
 
   @@index([clientId])
   @@index([eventDate])
@@ -69,6 +70,7 @@ model Invitation {
   checkedInBy    User?     @relation(fields: [checkedInById], references: [id], onDelete: SetNull)
 
   event Event @relation(fields: [eventId], references: [id])
+  checkinLogs CheckinLog[]
 
   @@index([eventId])
 }
@@ -91,6 +93,7 @@ model User {
   client               Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
   staffAssignments     EventStaff[]
   checkedInInvitations Invitation[]
+  checkinLogs          CheckinLog[]
 
   @@index([clientId])
 }
@@ -103,5 +106,30 @@ model EventStaff {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([eventId, userId])
+  @@index([userId])
+}
+
+enum CheckinMethod {
+  QR
+  NAME_SEARCH
+  MANUAL
+}
+
+model CheckinLog {
+  // For new arrivals this is the server-issued verification nonce (replay key).
+  id           String        @id @default(uuid())
+  invitationId String
+  eventId      String
+  userId       String?
+  count        Int
+  method       CheckinMethod
+  createdAt    DateTime      @default(now())
+  legacy       Boolean       @default(false)
+  invitation   Invitation    @relation(fields: [invitationId], references: [id], onDelete: Restrict)
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, createdAt, id])
+  @@index([invitationId, createdAt])
   @@index([userId])
 }

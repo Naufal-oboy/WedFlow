@@ -1,32 +1,137 @@
 "use client";
-import { useState, type FormEvent } from "react";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { QrScanner } from "./qr-scanner";
+import type { Arrival, ArrivalInput, CheckinGuest, Verification, VerifyInput } from "./validation";
+
+const attendance = (guest: CheckinGuest) => `${guest.checkedInCount ?? 0}/${guest.guestQuota} hadir · ${(guest.checkedInCount ?? 0) === 0 ? "Belum hadir" : (guest.checkedInCount ?? 0) < guest.guestQuota ? "Sebagian hadir" : "Kuota penuh"}`;
+
+async function requestJson(url: string, body?: unknown, signal?: AbortSignal) {
+  const response = await fetch(url, { signal, cache: "no-store", ...(body !== undefined ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error ?? "Permintaan gagal.");
+  return result;
+}
 
 export function CheckinForm({ eventId }: { eventId: string }) {
-  const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState("");
   const router = useRouter();
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    setPending(true); setMessage("");
+  const [tab, setTab] = useState<"QR" | "NAME_SEARCH">("QR");
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState<{ query: string; guests: CheckinGuest[]; error?: string }>({ query: "", guests: [] });
+  const [verification, setVerification] = useState<Verification | null>(null);
+  const [count, setCount] = useState("1");
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [dialogError, setDialogError] = useState("");
+  const [attempt, setAttempt] = useState<ArrivalInput | null>(null);
+  const [history, setHistory] = useState<Arrival[]>([]);
+  const [historyError, setHistoryError] = useState("");
+  const lock = useRef(false);
+  const mounted = useRef(true);
+  const closeCamera = useCallback(() => setCameraOpen(false), []);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const loadHistory = useCallback(async () => {
     try {
-      const response = await fetch("/api/checkins", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId, code: data.get("code"), count: Number(data.get("count")) }) });
+      const result = await requestJson(`/api/checkins/history?eventId=${eventId}`);
+      if (mounted.current) { setHistory(result.arrivals); setHistoryError(""); }
+    } catch { if (mounted.current) setHistoryError("Riwayat belum dapat dimuat. Coba muat ulang."); }
+  }, [eventId]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void requestJson(`/api/checkins/history?eventId=${eventId}`, undefined, controller.signal)
+      .then((result) => { if (!controller.signal.aborted) setHistory(result.arrivals); })
+      .catch(() => { if (!controller.signal.aborted) setHistoryError("Riwayat belum dapat dimuat. Coba muat ulang."); });
+    return () => controller.abort();
+  }, [eventId]);
+  useEffect(() => {
+    if (tab !== "NAME_SEARCH" || query.trim().length < 2 || verification) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      void requestJson(`/api/checkins/search?eventId=${eventId}&q=${encodeURIComponent(query.trim())}`, undefined, controller.signal)
+        .then((result) => { if (!controller.signal.aborted) setSearch({ query, guests: result.invitations }); })
+        .catch((error: Error) => { if (!controller.signal.aborted) setSearch({ query, guests: [], error: error.message }); });
+    }, 300);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [query, eventId, tab, verification]);
+
+  const verify = useCallback(async (input: VerifyInput) => {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true); setCameraOpen(false); setMessage("");
+    try {
+      const result = await requestJson("/api/checkins/verify", input);
+      if (!mounted.current) return;
+      setVerification(result); setCount("1"); setConfirmed(false); setDialogError(""); setAttempt(null);
+    } catch (error) { if (mounted.current) setMessage(error instanceof Error ? error.message : "Verifikasi gagal."); }
+    finally { lock.current = false; if (mounted.current) setBusy(false); }
+  }, []);
+  const onScan = useCallback((value: string) => { void verify({ eventId, method: "QR", code: value }); }, [eventId, verify]);
+  const remaining = verification ? verification.invitation.guestQuota - (verification.invitation.checkedInCount ?? 0) : 0;
+  const validCount = Number.isInteger(Number(count)) && Number(count) > 0 && Number(count) <= remaining;
+
+  async function confirmArrival() {
+    if (lock.current || !verification || !confirmed || !validCount) return;
+    lock.current = true; setBusy(true); setDialogError("");
+    const payload = attempt ?? { eventId, verificationToken: verification.verificationToken, count: Number(count), confirmed: true as const };
+    setAttempt(payload);
+    try {
+      const response = await fetch("/api/checkins", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const result = await response.json();
-      setMessage(response.ok ? "Check-in berhasil dicatat." : result.error ?? "Check-in gagal.");
-      if (response.ok) { form.reset(); router.refresh(); }
-    } catch { setMessage("Koneksi terganggu. Coba lagi."); }
-    finally { setPending(false); }
+      if (!mounted.current) return;
+      if (!response.ok) {
+        const rejected = response.status < 500 && response.status !== 429;
+        if (rejected) setAttempt(null);
+        setDialogError(`${result.error ?? "Check-in gagal."}${rejected ? " Tutup dialog dan verifikasi kembali sebelum mencoba." : " Coba ulang transaksi yang sama."}`);
+        return;
+      }
+      setMessage(`Check-in berhasil: ${result.arrival.count} orang. Sisa kuota ${result.invitation.guestQuota - (result.invitation.checkedInCount ?? 0)} orang.${result.replayed ? " Retry terkonfirmasi; tidak ada tambahan pencatatan." : ""}`);
+      setVerification(null); setAttempt(null); setCode(""); setQuery("");
+      void loadHistory(); router.refresh();
+    } catch { if (mounted.current) setDialogError("Hasil belum diketahui karena koneksi terganggu. Gunakan Coba ulang transaksi; jumlah dan identitas transaksi tetap sama."); }
+    finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
-  return <form onSubmit={submit} className="mt-6 space-y-4 rounded-2xl border border-stone-200 bg-white p-6" aria-busy={pending}>
-    <h2 className="font-semibold">Check-in tamu</h2>
-    <div className="space-y-2"><Label htmlFor="code">Kode undangan</Label><Input id="code" name="code" required maxLength={200} disabled={pending} /></div>
-    <div className="space-y-2"><Label htmlFor="count">Jumlah tamu hadir</Label><Input id="count" name="count" type="number" min={1} max={1000} defaultValue={1} required disabled={pending} /></div>
-    <Button type="submit" disabled={pending}>{pending ? "Mencatat..." : "Catat kehadiran"}</Button>
-    {message && <p role="status" className="text-sm">{message}</p>}
-  </form>;
+
+  return <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-4 sm:p-6" aria-label="Check-in tamu">
+    <div><h2 className="text-xl font-semibold text-emerald-950">Sambut tamu</h2><p className="mt-1 text-sm text-stone-600">Verifikasi undangan, lalu catat jumlah yang datang sekarang.</p></div>
+    <div className="grid grid-cols-2 gap-2" aria-label="Metode pencarian">
+      <Button className="min-h-12" variant={tab === "QR" ? "default" : "outline"} disabled={busy} onClick={() => { setTab("QR"); closeCamera(); }}>Scan QR</Button>
+      <Button className="min-h-12" variant={tab === "NAME_SEARCH" ? "default" : "outline"} disabled={busy} onClick={() => { setTab("NAME_SEARCH"); closeCamera(); }}>Cari Nama</Button>
+    </div>
+    {tab === "QR" ? <div className="space-y-4">
+      <p className="text-sm text-stone-600">Aktifkan kamera untuk meminta izin. Kamera belakang diutamakan; gunakan HTTPS atau localhost.</p>
+      {cameraOpen ? <QrScanner onScan={onScan} onClose={closeCamera} /> : <Button className="min-h-12 w-full" disabled={busy} onClick={() => setCameraOpen(true)}>Aktifkan kamera</Button>}
+      <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void verify({ eventId, method: "MANUAL", code }); }}>
+        <Label htmlFor="manual-code">Kode undangan manual</Label><Input id="manual-code" className="min-h-12" value={code} onChange={(event) => setCode(event.target.value)} maxLength={200} required autoComplete="off" disabled={busy} />
+        <Button type="submit" variant="outline" className="min-h-12 w-full" disabled={busy || !code.trim()}>Verifikasi kode</Button>
+      </form>
+    </div> : <div className="space-y-3">
+      <Label htmlFor="guest-search">Nama tamu</Label><Input id="guest-search" className="min-h-12" placeholder="Ketik minimal 2 karakter" value={query} maxLength={100} onChange={(event) => setQuery(event.target.value)} autoComplete="off" disabled={busy} />
+      <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">Nama bukan bukti identitas. Cocokkan nama, kuota, dan referensi undangan dengan tamu atau koordinator; nama sama tetap undangan terpisah.</p>
+      {query.trim().length >= 2 && (search.query !== query ? <p role="status">Mencari tamu...</p> : search.error ? <p role="alert">{search.error}</p> : search.guests.length ? <ul className="space-y-2">{search.guests.map((guest) => <li key={guest.id}><button type="button" disabled={busy} onClick={() => void verify({ eventId, method: "NAME_SEARCH", invitationId: guest.id })} className="w-full rounded-xl border p-4 text-left hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:opacity-50"><span className="block font-semibold">{guest.guestName}</span><span className="mt-1 block text-sm">{attendance(guest)}</span><span className="mt-1 block break-all text-xs text-stone-500">Ref: {guest.id}</span></button></li>)}</ul> : <p role="status">Tidak ada undangan yang cocok. Coba sebagian nama atau hubungi koordinator.</p>)}
+    </div>}
+    {busy && !verification && <p role="status">Memverifikasi undangan...</p>}
+    {message && <p role="status" className="rounded-xl bg-stone-100 p-3 text-sm">{message}</p>}
+    <Dialog open={!!verification} onOpenChange={(open) => { if (!open && !busy && !attempt) setVerification(null); }}>
+      <DialogContent showCloseButton={!busy && !attempt} className="max-h-[90dvh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Verifikasi kedatangan</DialogTitle><DialogDescription>Pastikan undangan ini benar sebelum mencatat kehadiran.</DialogDescription></DialogHeader>
+        {verification && <><div className="space-y-2"><p className="text-lg font-semibold">{verification.invitation.guestName}</p><p>{verification.event.name}</p><p className="break-all text-xs text-stone-500">Ref: {verification.invitation.id}</p><dl className="grid grid-cols-2 gap-2 rounded-xl bg-emerald-50 p-3"><dt>Kuota undangan</dt><dd>{verification.invitation.guestQuota}</dd><dt>Sudah hadir</dt><dd>{verification.invitation.checkedInCount ?? 0}</dd><dt>Sisa kuota</dt><dd>{remaining}</dd></dl></div>
+          <Label htmlFor="arrival-count">Jumlah yang datang sekarang</Label><Input id="arrival-count" className="min-h-12" type="number" min={1} max={remaining} value={count} onChange={(event) => setCount(event.target.value)} disabled={busy || !!attempt} />
+          <label className="flex min-h-12 items-start gap-3 rounded-lg border p-3"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-emerald-700" checked={confirmed} disabled={busy || !!attempt} onChange={(event) => setConfirmed(event.target.checked)} /><span>Saya sudah mencocokkan undangan dan mengonfirmasi identitas tamu secara manual.</span></label>
+          {!remaining && <p role="status">Kuota sudah penuh. Tidak ada kedatangan tambahan yang dapat dicatat.</p>}
+          {dialogError && <p role="alert" className="text-sm text-red-700">{dialogError}</p>}
+          <Button className="min-h-12 w-full" disabled={busy || !confirmed || !validCount || (!!dialogError && !attempt)} onClick={() => void confirmArrival()}>{busy ? "Mencatat..." : attempt ? "Coba ulang transaksi" : "Konfirmasi check-in"}</Button>
+          {!attempt && <Button className="min-h-12" variant="outline" disabled={busy} onClick={() => setVerification(null)}>Batal / verifikasi ulang</Button>}
+        </>}
+      </DialogContent>
+    </Dialog>
+    <section className="border-t pt-4"><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">Kedatangan terbaru</h3><Button variant="outline" onClick={() => void loadHistory()}>Muat ulang</Button></div>{historyError && <p role="alert">{historyError}</p>}{history.length ? <ul className="mt-3 divide-y">{history.map((arrival) => <li key={arrival.id} className="py-3 text-sm"><p className="font-medium">{arrival.invitation.guestName} · +{arrival.count} orang</p><p className="text-stone-600">{arrival.method} · {arrival.user?.name ?? "Petugas lama"}{arrival.legacy ? " · Riwayat migrasi" : ""}</p><p className="text-xs text-stone-500">{new Date(arrival.createdAt).toLocaleString("id-ID")}</p></li>)}</ul> : !historyError && <p className="mt-3 text-sm text-stone-500">Belum ada kedatangan tercatat.</p>}</section>
+  </section>;
 }

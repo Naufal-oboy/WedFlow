@@ -5,6 +5,7 @@ import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/features/auth/password";
 import { bootstrapSuperAdmin } from "../src/features/auth/bootstrap";
 import { testQrHttp } from "./test-qr-http";
+import { checkinPayload } from "./checkin-test-helper";
 
 // Uses uniquely identified temporary fixtures; never deletes existing application records.
 const base = process.env.AUTH_TEST_URL ?? "http://localhost:3100";
@@ -132,13 +133,13 @@ async function main() {
     const response = await browser.request(path);
     check(response.status < 400 && (response.headers.has("location") || (await response.text()).includes("NEXT_REDIRECT")), "Cross-role pages must redirect server-side.");
   }
-  const checkin = { eventId: eventIds[0], code: `${prefix}-code-0`, count: 2 };
+  const checkin = await checkinPayload(staff, eventIds[0], `${prefix}-code-0`, 2);
   check((await clientA.json("/api/checkins", "POST", checkin)).status === 403, "Client cannot check in guests.");
   check((await staff.json("/api/checkins", "POST", checkin, "https://evil.example")).status === 403, "Cross-origin write must be denied.");
-  check((await staff.json("/api/checkins", "POST", { ...checkin, count: 3 })).status === 400, "Guest quota must be enforced.");
-  check((await staff.json("/api/checkins", "POST", { eventId: eventIds[1], code: `${prefix}-code-1`, count: 1 })).status === 404, "Unassigned check-in must be denied.");
+  check((await staff.json("/api/checkins", "POST", { ...checkin, count: 3 })).status === 409, "Guest quota must be enforced.");
+  check((await staff.json("/api/checkins/verify", "POST", { eventId: eventIds[1], code: `${prefix}-code-1`, method: "MANUAL" })).status === 404, "Unassigned check-in must be denied.");
   const writes = await Promise.all([staff.json("/api/checkins", "POST", checkin), staff.json("/api/checkins", "POST", checkin)]);
-  check(writes.map((r) => r.status).sort().join(",") === "201,409", "Concurrent check-in must be recorded exactly once.");
+  check(writes.map((r) => r.status).sort().join(",") === "200,201", "Concurrent retry must be recorded exactly once.");
   const report = await (await clientA.request(`/api/checkins?eventId=${eventIds[0]}`)).json();
   check(report.invitations.find((invitation: { id: string }) => invitation.id === invitationIds[0]).checkedInCount === 2, "Client report must show correct attendance.");
 
@@ -237,6 +238,7 @@ main().catch((error) => {
   process.exitCode = 1;
 }).finally(async () => {
   try {
+    await prisma.checkinLog.deleteMany({ where: { eventId: { in: eventIds } } });
     await prisma.invitation.deleteMany({ where: { eventId: { in: eventIds } } });
     await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
