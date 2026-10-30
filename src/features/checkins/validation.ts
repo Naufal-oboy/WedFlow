@@ -17,5 +17,5 @@ export type CheckinGuest = {
   id: string; guestName: string; guestQuota: number; checkedInCount: number | null;
   checkedInAt: string | null;
 };
-export type Verification = { event: { id: string; name: string }; invitation: CheckinGuest; verificationToken: string };
+export type Verification = { event: { id: string; name: string }; invitation: CheckinGuest; verificationToken: string; ticket?: { id: string; queueCode: string; submittedName: string } };
 export type Arrival = { id: string; count: number; method: string; createdAt: string; legacy: boolean; invitation: { guestName: string }; user: { name: string } | null };

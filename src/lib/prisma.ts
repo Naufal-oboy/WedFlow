@@ -14,9 +14,14 @@ function createPrismaClient() {
     throw new Error("DATABASE_URL belum diatur di environment server.");
   }
 
-  const schema = new URL(connectionString).searchParams.get("schema") ?? "public";
+  const databaseUrl = new URL(connectionString);
+  const schema = databaseUrl.searchParams.get("schema") ?? "public";
+  // Prisma's DateTime wire values must be interpreted as UTC, including on
+  // databases whose default session timezone is not UTC. Apply to every pooled
+  // connection and preserve any other configured PostgreSQL startup options.
+  databaseUrl.searchParams.set("options", `${databaseUrl.searchParams.get("options") ?? ""} -c timezone=UTC`.trim());
   const adapter = new PrismaPg(
-    { connectionString, connectionTimeoutMillis: 10_000 },
+    { connectionString: databaseUrl.toString(), connectionTimeoutMillis: 10_000 },
     { schema },
   );
 

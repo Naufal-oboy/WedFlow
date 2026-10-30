@@ -5,9 +5,10 @@ import { AccessError } from "@/lib/access-error";
 
 const claimsSchema = z.object({
   id: z.uuid(), eventId: z.uuid(), invitationId: z.uuid(), userId: z.uuid(),
-  method: z.enum(["QR", "NAME_SEARCH", "MANUAL"]), count: z.number().int(), quota: z.number().int(),
+  method: z.enum(["QR", "NAME_SEARCH", "MANUAL", "PUBLIC_PRECHECKIN"]), count: z.number().int(), quota: z.number().int(),
+  precheckinId: z.uuid().optional(),
   name: z.string(), expires: z.number(),
-});
+}).refine(value => (value.method === "PUBLIC_PRECHECKIN") === !!value.precheckinId);
 export type VerificationClaims = z.infer<typeof claimsSchema>;
 function sign(payload: string) {
   const secret = process.env.AUTH_SECRET;

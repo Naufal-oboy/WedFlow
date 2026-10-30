@@ -21,7 +21,8 @@ export async function checkinUser() {
   checkinRateLimit(user.id);
   return user;
 }
-async function accessibleEvent(db: Prisma.TransactionClient, user: Session["user"], eventId: string) {
+export async function accessibleEvent(db: Prisma.TransactionClient, user: Session["user"], eventId: string) {
+  if (user.role !== "SUPER_ADMIN" && user.role !== "STAFF") throw new AccessError(403, "Akses ditolak.");
   const event = await db.event.findFirst({ where: { AND: [{ id: eventId }, eventScope(user)] }, select: { id: true, name: true, status: true, client: { select: { status: true } } } });
   if (!event) throw new AccessError(404, "Acara tidak ditemukan atau Anda belum ditugaskan.");
   return event;
@@ -92,6 +93,12 @@ export async function recordArrival(user: Session["user"], input: ArrivalInput) 
     const currentUser = await tx.user.findUnique({ where: { id: user.id }, select: { role: true } });
     if (!currentUser || currentUser.role !== user.role) throw new AccessError(403, "Akses petugas berubah. Silakan login kembali.");
     const event = await accessibleEvent(tx, user, input.eventId);
+    // Ticket lock precedes invitation lock. Two operators (even selecting
+    // different invitations) cannot consume one public request twice.
+    const tickets = claims.precheckinId ? await tx.$queryRaw<{ id: string; status: string; usable: boolean }[]>`
+      SELECT "id", "status", ("expiresAt" > clock_timestamp()) AS "usable" FROM "PrecheckinRequest"
+      WHERE "id" = ${claims.precheckinId} AND "eventId" = ${input.eventId} FOR UPDATE` : [];
+    if (claims.precheckinId && !tickets.length) throw new AccessError(409, "Tiket tidak tersedia.");
     const rows = await tx.$queryRaw<Guest[]>`SELECT "id", "guestName", "guestQuota", "checkedInCount", "checkedInAt"
       FROM "Invitation" WHERE "id" = ${claims.invitationId} AND "eventId" = ${input.eventId} FOR UPDATE`;
     const invitation = rows[0];
@@ -102,16 +109,23 @@ export async function recordArrival(user: Session["user"], input: ArrivalInput) 
       return { success: true, replayed: true, invitation, arrival: await tx.checkinLog.findUniqueOrThrow({ where: { id: previous.id }, select: logSelect }) };
     }
     if (event.status !== "ACTIVE" || event.client.status !== "ACTIVE") throw new AccessError(409, "Acara atau client tidak aktif.");
+    if (claims.precheckinId && (tickets[0].status !== "PENDING" || !tickets[0].usable)) throw new AccessError(409, "Tiket sudah diproses atau kedaluwarsa.");
     if (claims.expires <= Date.now()) throw new AccessError(409, "Verifikasi kedaluwarsa. Verifikasi undangan kembali.");
     if ((invitation.checkedInCount ?? 0) !== claims.count || invitation.guestQuota !== claims.quota || invitation.guestName !== claims.name) throw new AccessError(409, "Data undangan berubah. Verifikasi kembali jumlah hadir dan sisa kuota.");
     const changed = await tx.$executeRaw`UPDATE "Invitation"
       SET "checkedInCount" = COALESCE("checkedInCount", 0) + ${input.count},
-        "checkedInAt" = COALESCE("checkedInAt", CURRENT_TIMESTAMP),
+        "checkedInAt" = COALESCE("checkedInAt", clock_timestamp() AT TIME ZONE 'UTC'),
         "checkedInById" = CASE WHEN "checkedInAt" IS NULL THEN ${user.id} ELSE "checkedInById" END
       WHERE "id" = ${invitation.id} AND "eventId" = ${input.eventId}
         AND COALESCE("checkedInCount", 0) + ${input.count} <= "guestQuota"`;
     if (!changed) throw new AccessError(409, "Jumlah kedatangan melebihi sisa kuota undangan.");
     const arrival = await tx.checkinLog.create({ data: { id: claims.id, eventId: input.eventId, invitationId: invitation.id, userId: user.id, count: input.count, method: claims.method }, select: logSelect });
+    if (claims.precheckinId) {
+      const consumed = await tx.$executeRaw`UPDATE "PrecheckinRequest"
+        SET "status" = 'VERIFIED', "verifiedAt" = clock_timestamp(), "processedById" = ${user.id}, "invitationId" = ${invitation.id}, "checkinLogId" = ${arrival.id}
+        WHERE "id" = ${claims.precheckinId} AND "eventId" = ${input.eventId} AND "status" = 'PENDING' AND "expiresAt" > clock_timestamp()`;
+      if (!consumed) throw new AccessError(409, "Tiket sudah diproses atau kedaluwarsa.");
+    }
     return { success: true, replayed: false, arrival, invitation: await tx.invitation.findUniqueOrThrow({ where: { id: invitation.id }, select: checkinGuestSelect }) };
   }, { isolationLevel: "ReadCommitted", timeout: 10_000 });
 }

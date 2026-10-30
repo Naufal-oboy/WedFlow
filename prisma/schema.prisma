@@ -50,6 +50,7 @@ model Event {
   invitations      Invitation[]
   staffAssignments EventStaff[]
   checkinLogs      CheckinLog[]
+  precheckinRequests PrecheckinRequest[]
 
   @@index([clientId])
   @@index([eventDate])
@@ -71,6 +72,7 @@ model Invitation {
 
   event Event @relation(fields: [eventId], references: [id])
   checkinLogs CheckinLog[]
+  precheckinRequests PrecheckinRequest[]
 
   @@index([eventId])
 }
@@ -94,6 +96,7 @@ model User {
   staffAssignments     EventStaff[]
   checkedInInvitations Invitation[]
   checkinLogs          CheckinLog[]
+  processedPrecheckins PrecheckinRequest[]
 
   @@index([clientId])
 }
@@ -113,6 +116,7 @@ enum CheckinMethod {
   QR
   NAME_SEARCH
   MANUAL
+  PUBLIC_PRECHECKIN
 }
 
 model CheckinLog {
@@ -125,6 +129,7 @@ model CheckinLog {
   method       CheckinMethod
   createdAt    DateTime      @default(now())
   legacy       Boolean       @default(false)
+  precheckinRequest PrecheckinRequest?
   invitation   Invitation    @relation(fields: [invitationId], references: [id], onDelete: Restrict)
   event        Event         @relation(fields: [eventId], references: [id], onDelete: Restrict)
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -132,4 +137,45 @@ model CheckinLog {
   @@index([eventId, createdAt, id])
   @@index([invitationId, createdAt])
   @@index([userId])
+}
+
+enum PrecheckinStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  CANCELLED
+}
+
+model PrecheckinRequest {
+  id           String @id @default(uuid())
+  eventId      String
+  submittedName String
+  tokenHash    String @unique
+  queueCode    String
+  status       PrecheckinStatus @default(PENDING)
+  expiresAt    DateTime @db.Timestamptz(3)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  verifiedAt   DateTime? @db.Timestamptz(3)
+  cancelledAt  DateTime? @db.Timestamptz(3)
+  processedById String?
+  invitationId String?
+  checkinLogId String? @unique
+  event        Event @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  processedBy  User? @relation(fields: [processedById], references: [id], onDelete: SetNull)
+  invitation   Invitation? @relation(fields: [invitationId], references: [id], onDelete: Restrict)
+  checkinLog   CheckinLog? @relation(fields: [checkinLogId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, queueCode])
+  @@index([eventId, status, createdAt, id])
+  @@index([status, expiresAt])
+  @@index([invitationId])
+  @@index([processedById])
+}
+
+// Shared across application instances. Keys contain hashes, never raw IPs.
+model PrecheckinRateLimit {
+  key       String @id
+  count     Int
+  expiresAt DateTime @db.Timestamptz(3)
+  @@index([expiresAt])
 }
