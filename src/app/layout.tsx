@@ -25,7 +25,11 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}<Toaster theme="light" richColors closeButton /></body>
+      {/* Extensions may inject attributes on body before hydration. Keep suppression local. */}
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        {children}
+        <Toaster theme="light" richColors closeButton />
+      </body>
     </html>
   );
 }
