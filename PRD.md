@@ -287,7 +287,7 @@ flowchart TD
 | `/client/events/[id]` | Client terotorisasi | Detail dan laporan event |
 | `/staff` | Staff | Daftar event penugasan |
 | `/staff/events/[id]/checkin` | Staff terotorisasi | Scanner dan pencarian nama |
-| `/e/[slug]/precheckin` | Publik (P1) | Permintaan pre-check-in |
+| `/e/[eventSlug]/checkin` | Publik | Permintaan pre-check-in (tersedia Sprint 6) |
 
 Semua route adalah rancangan; penamaan dapat disesuaikan dengan struktur aplikasi yang telah ada.
 
@@ -433,7 +433,7 @@ Semua route adalah rancangan; penamaan dapat disesuaikan dengan struktur aplikas
 1. Apakah satu akun Client dapat mengakses beberapa client/organisasi?
 2. Diputuskan pada Sprint 5: kuota keluarga dapat digunakan bertahap dengan verifikasi baru per kedatangan dan riwayat terpisah.
 3. Apakah check-in perlu mode override oleh koordinator, dan siapa yang berwenang?
-4. Apakah pass pre-check-in berlaku 2, 5, atau 10 menit? Tentukan lewat pilot.
+4. Diputuskan pada Sprint 6: tiket pre-check-in berlaku 20 menit; evaluasi durasi melalui pilot.
 5. Apakah dashboard Client hanya baca atau boleh mengedit daftar tamu?
 6. Bagaimana retensi data tamu dan prosedur penghapusan setelah acara?
 7. Apakah deployment memerlukan dukungan multi-gate/offline sejak rilis pertama?
@@ -470,8 +470,35 @@ Kontrak aktual: GET `/api/checkins/search`, POST `/api/checkins/verify`, GET
 dan GET `/api/checkins/history`. API laporan GET lama tetap tersedia bagi Client
 sesuai kepemilikan. Detail ada pada [Smart Check-in](./docs/smart-checkin.md).
 
-Belum termasuk public QR pre-check-in, WebSocket, pembayaran, booking, atau
-offline-first. Validasi HP fisik dan uji beban tetap bagian pilot operasional.
+Public QR pre-check-in ditambahkan pada Sprint 6. WebSocket, pembayaran, booking,
+dan offline-first belum termasuk. Validasi HP fisik dan uji beban tetap bagian pilot operasional.
+
+## 22. Implementasi Sprint 6
+
+QR umum per event aktif membuka `/e/[eventSlug]/checkin`. Origin berasal dari
+`APP_ORIGIN` atau `AUTH_URL` yang tervalidasi. Super Admin dapat download PNG
+dan mencetak poster. Client juga wajib aktif untuk menerima permintaan.
+
+Tamu mengirim nama tanpa login dan selalu memperoleh respons generik yang sama
+untuk nama valid, tanpa hasil pencarian atau konfirmasi keberadaan nama.
+Pencocokan ditunda hingga petugas membuka tiket. Nama duplikat tetap menjadi
+kandidat terpisah yang harus dipilih melalui verifikasi manual.
+
+`PrecheckinRequest` menyimpan nama yang dikirim, hash token acak 256-bit,
+kode antrean terpisah, expiry 20 menit, status dan jejak petugas. PENDING dapat
+menjadi VERIFIED, CANCELLED, atau EXPIRED. Tiket bukan bukti identitas dan tidak
+dapat langsung mencatat hadir. Token tidak ada dalam URL.
+
+Verifikasi dan kuota menggunakan sistem check-in bertahap serta `CheckinLog`
+yang sudah tersedia, dengan metode PUBLIC_PRECHECKIN. Ticket row lock dan
+conditional update dalam transaksi yang sama mencegah double-processing,
+termasuk saat petugas memilih kandidat berbeda. Retry transaksi identik
+mengembalikan hasil sebelumnya tanpa kedatangan tambahan.
+
+Rate limiter publik PostgreSQL berlaku lintas instance. Tanpa header IP
+tepercaya, limit bersama digunakan; konfigurasi ingress dan limit operasional
+harus ditinjau sebelum pilot. Detail API, keamanan, pengujian, dan batasan ada
+di [Public QR Pre-check-in](./docs/public-precheckin.md).
 
 **Dokumen ini merupakan baseline PRD WedFlow v1.0** dengan keputusan implementasi
-Sprint 5, dan dapat direvisi setelah audit serta uji coba di acara nyata.
+Sprint 5–6, dan dapat direvisi setelah audit serta uji coba di acara nyata.

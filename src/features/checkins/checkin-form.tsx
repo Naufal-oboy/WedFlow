@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QrScanner } from "./qr-scanner";
+import { PrecheckinQueue } from "@/features/precheckins/queue";
 import type { Arrival, ArrivalInput, CheckinGuest, Verification, VerifyInput } from "./validation";
 
 const attendance = (guest: CheckinGuest) => `${guest.checkedInCount ?? 0}/${guest.guestQuota} hadir · ${(guest.checkedInCount ?? 0) === 0 ? "Belum hadir" : (guest.checkedInCount ?? 0) < guest.guestQuota ? "Sebagian hadir" : "Kuota penuh"}`;
@@ -20,7 +21,8 @@ async function requestJson(url: string, body?: unknown, signal?: AbortSignal) {
 
 export function CheckinForm({ eventId }: { eventId: string }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"QR" | "NAME_SEARCH">("QR");
+  const [tab, setTab] = useState<"QR" | "NAME_SEARCH" | "PUBLIC">("QR");
+  const [queueVersion, setQueueVersion] = useState(0);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [code, setCode] = useState("");
   const [query, setQuery] = useState("");
@@ -94,6 +96,7 @@ export function CheckinForm({ eventId }: { eventId: string }) {
       }
       setMessage(`Check-in berhasil: ${result.arrival.count} orang. Sisa kuota ${result.invitation.guestQuota - (result.invitation.checkedInCount ?? 0)} orang.${result.replayed ? " Retry terkonfirmasi; tidak ada tambahan pencatatan." : ""}`);
       setVerification(null); setAttempt(null); setCode(""); setQuery("");
+      setQueueVersion(value => value + 1);
       void loadHistory(); router.refresh();
     } catch { if (mounted.current) setDialogError("Hasil belum diketahui karena koneksi terganggu. Gunakan Coba ulang transaksi; jumlah dan identitas transaksi tetap sama."); }
     finally { lock.current = false; if (mounted.current) setBusy(false); }
@@ -104,8 +107,9 @@ export function CheckinForm({ eventId }: { eventId: string }) {
     <div className="grid grid-cols-2 gap-2" aria-label="Metode pencarian">
       <Button className="min-h-12" variant={tab === "QR" ? "default" : "outline"} disabled={busy} onClick={() => { setTab("QR"); closeCamera(); }}>Scan QR</Button>
       <Button className="min-h-12" variant={tab === "NAME_SEARCH" ? "default" : "outline"} disabled={busy} onClick={() => { setTab("NAME_SEARCH"); closeCamera(); }}>Cari Nama</Button>
+      <Button className="col-span-2 min-h-12" variant={tab === "PUBLIC" ? "default" : "outline"} disabled={busy} onClick={() => { setTab("PUBLIC"); closeCamera(); }}>Antrean pre-check-in</Button>
     </div>
-    {tab === "QR" ? <div className="space-y-4">
+    {tab === "PUBLIC" ? <PrecheckinQueue key={`${eventId}-${queueVersion}`} eventId={eventId} onVerified={result => { setVerification(result); setCount("1"); setConfirmed(false); setDialogError(""); setAttempt(null); setMessage(""); }} /> : tab === "QR" ? <div className="space-y-4">
       <p className="text-sm text-stone-600">Aktifkan kamera untuk meminta izin. Kamera belakang diutamakan; gunakan HTTPS atau localhost.</p>
       {cameraOpen ? <QrScanner onScan={onScan} onClose={closeCamera} /> : <Button className="min-h-12 w-full" disabled={busy} onClick={() => setCameraOpen(true)}>Aktifkan kamera</Button>}
       <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void verify({ eventId, method: "MANUAL", code }); }}>
@@ -122,6 +126,7 @@ export function CheckinForm({ eventId }: { eventId: string }) {
     <Dialog open={!!verification} onOpenChange={(open) => { if (!open && !busy && !attempt) setVerification(null); }}>
       <DialogContent showCloseButton={!busy && !attempt} className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>Verifikasi kedatangan</DialogTitle><DialogDescription>Pastikan undangan ini benar sebelum mencatat kehadiran.</DialogDescription></DialogHeader>
+        {verification?.ticket && <p className="rounded-lg bg-amber-50 p-3 text-sm">Tiket {verification.ticket.queueCode} · Nama yang dimasukkan: {verification.ticket.submittedName}. Pastikan cocok dengan undangan yang dipilih di bawah.</p>}
         {verification && <><div className="space-y-2"><p className="text-lg font-semibold">{verification.invitation.guestName}</p><p>{verification.event.name}</p><p className="break-all text-xs text-stone-500">Ref: {verification.invitation.id}</p><dl className="grid grid-cols-2 gap-2 rounded-xl bg-emerald-50 p-3"><dt>Kuota undangan</dt><dd>{verification.invitation.guestQuota}</dd><dt>Sudah hadir</dt><dd>{verification.invitation.checkedInCount ?? 0}</dd><dt>Sisa kuota</dt><dd>{remaining}</dd></dl></div>
           <Label htmlFor="arrival-count">Jumlah yang datang sekarang</Label><Input id="arrival-count" className="min-h-12" type="number" min={1} max={remaining} value={count} onChange={(event) => setCount(event.target.value)} disabled={busy || !!attempt} />
           <label className="flex min-h-12 items-start gap-3 rounded-lg border p-3"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-emerald-700" checked={confirmed} disabled={busy || !!attempt} onChange={(event) => setConfirmed(event.target.checked)} /><span>Saya sudah mencocokkan undangan dan mengonfirmasi identitas tamu secara manual.</span></label>

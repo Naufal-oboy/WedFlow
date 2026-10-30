@@ -47,6 +47,13 @@ sesuai sisa kuota, dengan riwayat, transaksi atomik, dan retry idempotent.
 Lihat [Smart Check-in](./docs/smart-checkin.md) untuk migrasi `pg_trgm`, perubahan
 kontrak API (verify lalu confirm), pengujian, dan panduan HP melalui HTTPS.
 
+Sprint 6 menyediakan QR umum per event, halaman publik tanpa login, tiket
+sementara 20 menit, dan antrean verifikasi petugas. Respons publik tidak
+mengungkap apakah nama terdaftar. Check-in tetap melalui transaksi dan kuota
+yang sama; rate limiter publik menggunakan PostgreSQL lintas instance.
+Lihat [Public QR Pre-check-in](./docs/public-precheckin.md) untuk konfigurasi
+origin, batas permintaan, lifecycle tiket, dan pengujian.
+
 > **Status pengembangan:** Project masih dalam tahap pembangunan. Fitur yang dijelaskan di bawah merupakan cakupan produk yang direncanakan; ketersediaan setiap fitur perlu diperiksa pada implementasi terbaru.
 
 ## ✨ Fitur Utama
@@ -280,7 +287,7 @@ Status berikut merupakan **rencana pengembangan**, bukan klaim bahwa semua modul
 - [x] Pemindaian QR undangan personal melalui kamera dengan konfirmasi petugas.
 - [x] Smart Name Search untuk tamu tanpa QR.
 - [x] Check-in bertahap, riwayat kedatangan, proteksi kuota dan replay.
-- [ ] Public QR Pre-check-in dan pass sementara.
+- [x] Public QR Pre-check-in dan tiket sementara dengan verifikasi petugas.
 - [ ] Dashboard kehadiran real-time dan laporan.
 - [ ] Pengujian keamanan, performa, dan deployment.
 - [ ] Dukungan offline-first *(pengembangan lanjutan)*.
