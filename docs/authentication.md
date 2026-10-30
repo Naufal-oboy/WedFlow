@@ -104,6 +104,22 @@ Untuk deployment beberapa instance, tambahkan rate limiter bersama di gateway
 atau Redis; limiter lokal tidak merupakan pembatas global. Aplikasi tidak
 mencetak kredensial, cookie, hash, atau payload error driver.
 
+## Validasi instant UI saat development
+
+Next.js 16.4.3 dapat melaporkan `An error occurred while attempting to validate
+instant UI` ketika layout autentikasi me-redirect pengguna tanpa sesi sebelum
+halaman tujuan dirender. Pengujian browser bersih mereproduksi warning ini;
+akses setelah login berjalan normal.
+
+[Konfigurasi Next.js](../next.config.ts) menetapkan
+`experimental.instantInsights.validationLevel: "manual-warning"` agar validasi
+instant navigation hanya berjalan pada segment dengan `export const instant = true`.
+Ini menonaktifkan validasi otomatis yang memunculkan false positive tersebut;
+Cache Components, partial prefetching, Suspense, dan pemeriksaan role tetap aktif.
+Saat mengaktifkan validasi pada segment baru, uji juga redirect tanpa sesi dan
+akses dengan role yang tidak sesuai. Pengaturan ini berlaku untuk diagnostik
+development, bukan pengecualian terhadap autentikasi atau error aplikasi.
+
 ## Menyiapkan akun Client dan Staff
 
 1. Login sebagai Super Admin, buka **Akun & akses** di sidebar.
