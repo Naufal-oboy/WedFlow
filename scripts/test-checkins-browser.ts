@@ -92,9 +92,9 @@ export async function testCheckinBrowser({ base, eventId, invitation, cookies }:
     await assertStopped();
     await dashboard.getByRole("button", { name: "Aktifkan kamera" }).click();
     await ready();
-    await dashboard.getByRole("button", { name: "Cari Nama", exact: true }).click();
+    await dashboard.getByRole("tab", { name: "Cari Nama", exact: true }).click();
     await assertStopped();
-    await dashboard.getByRole("button", { name: "Scan QR", exact: true }).click();
+    await dashboard.getByRole("tab", { name: "Scan QR", exact: true }).click();
     await dashboard.getByRole("button", { name: "Aktifkan kamera" }).click();
     await ready();
     await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
@@ -120,7 +120,7 @@ export async function testCheckinBrowser({ base, eventId, invitation, cookies }:
     await dialog.getByRole("checkbox").check();
     await dialog.getByRole("button", { name: "Konfirmasi check-in", exact: true }).click();
     await expect(dialog).not.toBeVisible();
-    await dashboard.getByRole("button", { name: "Cari Nama", exact: true }).click();
+    await dashboard.getByRole("tab", { name: "Cari Nama", exact: true }).click();
     await dashboard.getByLabel("Nama tamu", { exact: true }).fill("Browser Famly");
     await dashboard.getByRole("button", { name: new RegExp(invitation.guestName) }).click();
     await expect(dialog.getByText(invitation.guestName, { exact: true })).toBeVisible();

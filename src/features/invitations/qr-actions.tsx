@@ -57,7 +57,7 @@ export function InvitationQrActions({ eventId, invitationId, guestName }: { even
     finally { setDownloading(false); }
   }
 
-  const printLink = <a href={`${base}/print`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 text-sm font-medium text-emerald-900 hover:bg-emerald-50 focus-visible:outline-2" aria-label={`Print undangan ${guestName} (tab baru)`}><Printer className="size-4" />Print undangan</a>;
+  const printLink = <a href={`${base}/print`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 text-sm font-medium text-primary hover:bg-success-soft focus-visible:outline-2" aria-label={`Print undangan ${guestName} (tab baru)`}><Printer className="size-4" />Print undangan</a>;
   return <>
     <div className="flex flex-wrap gap-2" aria-label={`Aksi undangan ${guestName}`} data-testid={`invitation-actions-${invitationId}`}>
       <Button variant="outline" onClick={showPreview}><QrCode />Lihat QR</Button>
@@ -65,20 +65,20 @@ export function InvitationQrActions({ eventId, invitationId, guestName }: { even
       {printLink}
     </div>
     <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) { requestVersion.current++; setPreview(null); setError(""); } }}>
-      <DialogContent className="wedflow-theme max-h-[90dvh] overflow-y-auto bg-[#faf8f2] sm:max-w-lg">
+      <DialogContent className="wedflow-theme max-h-[90dvh] overflow-y-auto bg-background sm:max-w-lg">
         <DialogHeader><DialogTitle>QR undangan</DialogTitle><DialogDescription>Tunjukkan QR kepada petugas pada acara yang tertera.</DialogDescription></DialogHeader>
-        {loading && <p role="status" className="py-12 text-center text-emerald-800">Menyiapkan QR undangan...</p>}
+        {loading && <p role="status" className="py-12 text-center text-primary">Menyiapkan QR undangan...</p>}
         {error && <div role="alert" className="space-y-3 rounded-xl bg-red-50 p-4 text-red-800"><p>{error}</p><Button variant="outline" onClick={showPreview}>Coba lagi</Button></div>}
         {preview && <>
-          <div className="rounded-xl border border-[#d8c79e] bg-white p-5 text-center">
-            <p className="text-xs uppercase tracking-widest text-[#73603b]">{preview.invitation.event.name}</p>
-            <h2 className="mt-2 text-xl font-semibold text-emerald-950">{preview.invitation.guestName}</h2>
+          <div className="rounded-xl border border-champagne bg-white p-5 text-center">
+            <p className="text-xs uppercase tracking-widest text-warning">{preview.invitation.event.name}</p>
+            <h2 className="mt-2 text-xl font-semibold text-primary">{preview.invitation.guestName}</h2>
             <p className="mt-2 text-sm">Kuota {preview.invitation.guestQuota} orang · {preview.invitation.checkedInAt ? `Sudah hadir (${preview.invitation.checkedInCount} orang)` : "Belum hadir"}</p>
             {/* A private in-memory data URL must not use the public Next image optimizer. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={preview.pngDataUrl} width={1024} height={1024} alt={`QR undangan ${preview.invitation.guestName}`} className="mx-auto my-3 aspect-square w-64 max-w-full" onError={() => { setError("Gambar QR gagal dimuat. Coba lagi."); setPreview(null); }} />
-            <p className="text-xs text-stone-500">Kode undangan</p><code className="mt-1 block break-all text-xs">{preview.invitation.code}</code>
-            <p className="mt-4 text-xs text-stone-500">{formatEventDate(new Date(preview.invitation.event.eventDate))}<br />{preview.invitation.event.location ?? "Lokasi akan diinformasikan"}</p>
+            <p className="text-xs text-muted-foreground">Kode undangan</p><code className="mt-1 block break-all text-xs">{preview.invitation.code}</code>
+            <p className="mt-4 text-xs text-muted-foreground">{formatEventDate(new Date(preview.invitation.event.eventDate))}<br />{preview.invitation.event.location ?? "Lokasi akan diinformasikan"}</p>
           </div>
           <div className="flex flex-wrap justify-end gap-2"><Button onClick={download} disabled={downloading}><Download />{downloading ? "Mengunduh..." : "Download PNG"}</Button>{printLink}</div>
         </>}

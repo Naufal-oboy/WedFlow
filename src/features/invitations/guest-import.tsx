@@ -48,18 +48,18 @@ export function GuestImport({ eventId }: { eventId: string }) {
       setError(message); toast.error(message);
     } finally { setPending(false); }
   }
-  return <details className="rounded-2xl border border-[#d8c79e] bg-white p-5">
-    <summary className="cursor-pointer font-medium text-emerald-950">Impor tamu dari CSV</summary>
+  return <details className="rounded-lg border border-champagne bg-white p-5">
+    <summary className="cursor-pointer font-medium text-primary">Impor tamu dari CSV</summary>
     <div className="mt-4 space-y-4" aria-busy={pending || reading}>
-      <p className="text-sm text-stone-600">Gunakan header <code>guestName,guestQuota</code>. Maksimal 500 tamu dan 256 KB. Nama dengan koma harus diapit tanda kutip.</p>
+      <p className="text-sm text-muted-foreground">Gunakan header <code>guestName,guestQuota</code>. Maksimal 500 tamu dan 256 KB. Nama dengan koma harus diapit tanda kutip.</p>
       <div className="space-y-2"><Label htmlFor={id}>File CSV</Label><Input ref={input} id={id} type="file" accept=".csv,text/csv" disabled={pending} onChange={(event) => void selectFile(event.target.files?.[0])} /></div>
       {reading && <p role="status" className="text-sm">Membaca file...</p>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {!!preview?.errors.length && <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800"><p>Perbaiki CSV sebelum impor. Belum ada data yang disimpan.</p><ul className="mt-2 list-inside list-disc">{preview.errors.slice(0, 10).map((message, index) => <li key={index}>{message}</li>)}</ul>{preview.errors.length > 10 && <p>Dan {preview.errors.length - 10} kesalahan lainnya.</p>}</div>}
       {preview && !preview.errors.length && <>
         <p className="text-sm font-medium">Preview: {preview.guests.length} tamu (menampilkan maksimal 10)</p>
-        <ul className="divide-y rounded-xl border border-stone-200">{preview.guests.slice(0, 10).map((guest, index) => <li key={index} className="flex justify-between gap-4 p-3 text-sm"><span className="min-w-0 break-words">{guest.guestName}</span><span className="shrink-0">Kuota {guest.guestQuota}</span></li>)}</ul>
-        <p className="text-xs text-stone-500">Pastikan file belum pernah diimpor. Mengimpor ulang membuat undangan baru.</p>
+        <ul className="divide-y rounded-xl border border-border">{preview.guests.slice(0, 10).map((guest, index) => <li key={index} className="flex justify-between gap-4 p-3 text-sm"><span className="min-w-0 break-words">{guest.guestName}</span><span className="shrink-0">Kuota {guest.guestQuota}</span></li>)}</ul>
+        <p className="text-xs text-muted-foreground">Pastikan file belum pernah diimpor. Mengimpor ulang membuat undangan baru.</p>
         <Button disabled={pending} onClick={importGuests}>{pending ? "Mengimpor..." : `Konfirmasi impor ${preview.guests.length} tamu`}</Button>
       </>}
     </div>

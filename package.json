@@ -23,7 +23,8 @@
     "test:checkins:e2e": "node --conditions=react-server --import tsx scripts/test-checkins-e2e.ts",
     "test:checkins:migration": "node --import tsx scripts/test-checkin-migration.ts",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:auth:e2e": "node --conditions=react-server --import tsx scripts/test-auth-e2e.ts"
+    "test:auth:e2e": "node --conditions=react-server --import tsx scripts/test-auth-e2e.ts",
+    "test:ui": "node --conditions=react-server --import tsx scripts/test-ui-redesign.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

@@ -20,14 +20,14 @@ export function LoginForm() {
       <Label htmlFor="password">Password</Label>
       <div className="relative">
         <Input id="password" name="password" type={showPassword ? "text" : "password"} required maxLength={72} autoComplete="current-password" placeholder="Masukkan password Anda" className="h-12 bg-white pr-12" disabled={pending} aria-invalid={!!state.fields?.password} aria-describedby={state.fields?.password ? "password-error" : undefined} />
-        <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-stone-500" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"} aria-pressed={showPassword} disabled={pending}>{showPassword ? <EyeOff /> : <Eye />}</Button>
+        <Button type="button" variant="ghost" size="icon" className="absolute top-0.5 right-0.5 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"} aria-pressed={showPassword} disabled={pending}>{showPassword ? <EyeOff /> : <Eye />}</Button>
       </div>
       {state.fields?.password && <p id="password-error" className="text-sm text-red-700">{state.fields.password[0]}</p>}
     </div>
     {state.error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{state.error}</p>}
-    <Button type="submit" className="h-12 w-full bg-emerald-900 text-white hover:bg-emerald-800" disabled={pending}>
+    <Button type="submit" className="h-12 w-full bg-primary text-white hover:bg-primary" disabled={pending}>
       {pending ? <><LoaderCircle className="animate-spin" /> Memproses...</> : <>Masuk ke dashboard <ArrowRight className="ml-2 size-4" /></>}
     </Button>
-    <p className="text-center text-xs leading-5 text-stone-500">Belum memiliki akses atau lupa password?<br />Hubungi administrator WedFlow Anda.</p>
+    <p className="text-center text-xs leading-5 text-muted-foreground">Belum memiliki akses atau lupa password?<br />Hubungi administrator WedFlow Anda.</p>
   </form>;
 }
