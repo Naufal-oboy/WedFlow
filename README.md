@@ -54,6 +54,11 @@ yang sama; rate limiter publik menggunakan PostgreSQL lintas instance.
 Lihat [Public QR Pre-check-in](./docs/public-precheckin.md) untuk konfigurasi
 origin, batas permintaan, lifecycle tiket, dan pengujian.
 
+Dashboard menggunakan desain Modern Editorial SaaS dengan token Forest Green,
+Warm Ivory, dan Champagne, navigasi mobile, serta kontrol check-in yang ramah
+sentuhan dan keyboard. Audit, keputusan desain, dan pengujian tersedia di
+[UI/UX Redesign Sprint 1](./docs/ui-redesign.md).
+
 > **Status pengembangan:** Project masih dalam tahap pembangunan. Fitur yang dijelaskan di bawah merupakan cakupan produk yang direncanakan; ketersediaan setiap fitur perlu diperiksa pada implementasi terbaru.
 
 ## ✨ Fitur Utama

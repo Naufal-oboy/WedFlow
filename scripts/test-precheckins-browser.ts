@@ -27,7 +27,7 @@ export async function testPrecheckinBrowser(input: { base: string; slug: string;
     const desk = await staff.newPage();
     desk.on("pageerror", error => errors.push(error.message));
     await desk.goto(`${input.base}/staff/events/${input.eventId}`);
-    await desk.getByRole("button", { name: "Antrean pre-check-in", exact: true }).click();
+    await desk.getByRole("tab", { name: "Antrean pre-check-in", exact: true }).click();
     await desk.getByLabel("Kode antrean atau token sementara").fill(queueCode);
     await desk.getByRole("button", { name: "Buka tiket", exact: true }).click();
     await desk.getByRole("button", { name: /^Family 5/ }).click();

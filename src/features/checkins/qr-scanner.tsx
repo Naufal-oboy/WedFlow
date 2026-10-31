@@ -85,8 +85,8 @@ export function QrScanner({ onScan, onClose }: { onScan: (code: string) => void;
     };
   }, [camera, onScan, onClose]);
 
-  return <section className="space-y-3 rounded-xl border border-emerald-200 p-3" aria-label="Pemindai QR">
-    <div className="relative aspect-square overflow-hidden rounded-lg bg-stone-100"><video ref={videoRef} muted playsInline className="h-full w-full object-contain" aria-label="Pratinjau kamera" /><div className="pointer-events-none absolute inset-[15%] rounded-xl border-2 border-amber-300" /></div>
+  return <section className="space-y-3 rounded-xl border border-success/20 p-3" aria-label="Pemindai QR">
+    <div className="relative mx-auto aspect-square w-full max-w-96 overflow-hidden rounded-lg bg-muted"><video ref={videoRef} muted playsInline className="h-full w-full object-contain" aria-label="Pratinjau kamera" /><div className="pointer-events-none absolute inset-[15%] rounded-xl border-2 border-champagne" /></div>
     <p role="status" className="text-sm">{state}</p>
     {cameras.length > 1 && <div className="space-y-2"><Label htmlFor="camera">Pilih kamera</Label><select id="camera" className="min-h-12 w-full rounded-lg border bg-white px-3" value={camera} onChange={(event) => { setState("Membuka kamera..."); setCamera(event.target.value); }}><option value="">Kamera belakang otomatis</option>{cameras.map((item, index) => <option key={item.deviceId} value={item.deviceId}>{item.label || `Kamera ${index + 1}`}</option>)}</select></div>}
     <Button type="button" variant="outline" className="min-h-12 w-full" onClick={onClose}>Tutup kamera</Button>

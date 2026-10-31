@@ -42,7 +42,7 @@ export function GuestFormDialog({ eventId, guest }: { eventId: string; guest?: E
         <form onSubmit={submit} className="space-y-5">
           <FormField name="guestName" label="Nama tamu" errors={errors}><Input id="guestName" name="guestName" defaultValue={guest?.guestName ?? ""} required maxLength={150} disabled={pending} aria-invalid={!!errors.guestName} aria-describedby={errors.guestName ? "guestName-error" : undefined} /></FormField>
           <FormField name="guestQuota" label="Kuota undangan" errors={errors}><Input id="guestQuota" name="guestQuota" type="number" min={Math.max(1, guest?.checkedInCount ?? 0)} max={1000} step={1} defaultValue={guest?.guestQuota ?? 1} required disabled={pending} aria-invalid={!!errors.guestQuota} aria-describedby={errors.guestQuota ? "guestQuota-error" : undefined} /></FormField>
-          {!!guest?.checkedInCount && <p className="text-sm text-stone-500">Sudah tercatat {guest.checkedInCount} tamu hadir. Kuota minimal {guest.checkedInCount}.</p>}
+          {!!guest?.checkedInCount && <p className="text-sm text-muted-foreground">Sudah tercatat {guest.checkedInCount} tamu hadir. Kuota minimal {guest.checkedInCount}.</p>}
           {message && <p role="alert" className="text-sm text-red-700">{message}</p>}
           <div className="flex justify-end gap-3"><Button type="button" variant="outline" disabled={pending} onClick={() => setOpen(false)}>Batal</Button><Button type="submit" disabled={pending}>{pending ? "Menyimpan..." : "Simpan undangan"}</Button></div>
         </form>

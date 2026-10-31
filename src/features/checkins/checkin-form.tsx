@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs } from "@base-ui/react/tabs";
+import { QrCode, Search, ListChecks } from "lucide-react";
 import { QrScanner } from "./qr-scanner";
 import { PrecheckinQueue } from "@/features/precheckins/queue";
 import type { Arrival, ArrivalInput, CheckinGuest, Verification, VerifyInput } from "./validation";
@@ -102,32 +104,33 @@ export function CheckinForm({ eventId }: { eventId: string }) {
     finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
 
-  return <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-4 sm:p-6" aria-label="Check-in tamu">
-    <div><h2 className="text-xl font-semibold text-emerald-950">Sambut tamu</h2><p className="mt-1 text-sm text-stone-600">Verifikasi undangan, lalu catat jumlah yang datang sekarang.</p></div>
-    <div className="grid grid-cols-2 gap-2" aria-label="Metode pencarian">
-      <Button className="min-h-12" variant={tab === "QR" ? "default" : "outline"} disabled={busy} onClick={() => { setTab("QR"); closeCamera(); }}>Scan QR</Button>
-      <Button className="min-h-12" variant={tab === "NAME_SEARCH" ? "default" : "outline"} disabled={busy} onClick={() => { setTab("NAME_SEARCH"); closeCamera(); }}>Cari Nama</Button>
-      <Button className="col-span-2 min-h-12" variant={tab === "PUBLIC" ? "default" : "outline"} disabled={busy} onClick={() => { setTab("PUBLIC"); closeCamera(); }}>Antrean pre-check-in</Button>
-    </div>
-    {tab === "PUBLIC" ? <PrecheckinQueue key={`${eventId}-${queueVersion}`} eventId={eventId} onVerified={result => { setVerification(result); setCount("1"); setConfirmed(false); setDialogError(""); setAttempt(null); setMessage(""); }} /> : tab === "QR" ? <div className="space-y-4">
-      <p className="text-sm text-stone-600">Aktifkan kamera untuk meminta izin. Kamera belakang diutamakan; gunakan HTTPS atau localhost.</p>
+  return <section className="space-y-5 rounded-lg border border-border bg-card p-4 sm:p-6" aria-label="Check-in tamu">
+    <div><h2 className="text-xl font-semibold text-primary">Sambut tamu</h2><p className="mt-1 text-sm text-muted-foreground">Verifikasi undangan, lalu catat jumlah yang datang sekarang.</p></div>
+    <Tabs.Root value={tab} onValueChange={(value) => { if (!busy && (value === "QR" || value === "NAME_SEARCH" || value === "PUBLIC")) { setTab(value); closeCamera(); } }} className="space-y-5">
+      <Tabs.List aria-label="Metode pencarian" className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 sm:grid-cols-3">
+        <Tabs.Tab value="QR" disabled={busy} className="checkin-tab"><QrCode className="size-4" aria-hidden="true" />Scan QR</Tabs.Tab>
+        <Tabs.Tab value="NAME_SEARCH" disabled={busy} className="checkin-tab"><Search className="size-4" aria-hidden="true" />Cari Nama</Tabs.Tab>
+        <Tabs.Tab value="PUBLIC" disabled={busy} className="checkin-tab col-span-2 sm:col-span-1"><ListChecks className="size-4" aria-hidden="true" />Antrean pre-check-in</Tabs.Tab>
+      </Tabs.List>
+    <Tabs.Panel value="PUBLIC"><PrecheckinQueue key={`${eventId}-${queueVersion}`} eventId={eventId} onVerified={result => { setVerification(result); setCount("1"); setConfirmed(false); setDialogError(""); setAttempt(null); setMessage(""); }} /></Tabs.Panel><Tabs.Panel value="QR" className="space-y-4">
+      <p className="text-sm text-muted-foreground">Pindai QR pada undangan tamu. Kamera akan meminta izin saat diaktifkan.</p>
       {cameraOpen ? <QrScanner onScan={onScan} onClose={closeCamera} /> : <Button className="min-h-12 w-full" disabled={busy} onClick={() => setCameraOpen(true)}>Aktifkan kamera</Button>}
       <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void verify({ eventId, method: "MANUAL", code }); }}>
         <Label htmlFor="manual-code">Kode undangan manual</Label><Input id="manual-code" className="min-h-12" value={code} onChange={(event) => setCode(event.target.value)} maxLength={200} required autoComplete="off" disabled={busy} />
         <Button type="submit" variant="outline" className="min-h-12 w-full" disabled={busy || !code.trim()}>Verifikasi kode</Button>
       </form>
-    </div> : <div className="space-y-3">
+    </Tabs.Panel><Tabs.Panel value="NAME_SEARCH" className="space-y-3">
       <Label htmlFor="guest-search">Nama tamu</Label><Input id="guest-search" className="min-h-12" placeholder="Ketik minimal 2 karakter" value={query} maxLength={100} onChange={(event) => setQuery(event.target.value)} autoComplete="off" disabled={busy} />
-      <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">Nama bukan bukti identitas. Cocokkan nama, kuota, dan referensi undangan dengan tamu atau koordinator; nama sama tetap undangan terpisah.</p>
-      {query.trim().length >= 2 && (search.query !== query ? <p role="status">Mencari tamu...</p> : search.error ? <p role="alert">{search.error}</p> : search.guests.length ? <ul className="space-y-2">{search.guests.map((guest) => <li key={guest.id}><button type="button" disabled={busy} onClick={() => void verify({ eventId, method: "NAME_SEARCH", invitationId: guest.id })} className="w-full rounded-xl border p-4 text-left hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:opacity-50"><span className="block font-semibold">{guest.guestName}</span><span className="mt-1 block text-sm">{attendance(guest)}</span><span className="mt-1 block break-all text-xs text-stone-500">Ref: {guest.id}</span></button></li>)}</ul> : <p role="status">Tidak ada undangan yang cocok. Coba sebagian nama atau hubungi koordinator.</p>)}
-    </div>}
+      <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning">Nama bukan bukti identitas. Cocokkan nama, kuota, dan referensi undangan dengan tamu atau koordinator; nama sama tetap undangan terpisah.</p>
+      {query.trim().length >= 2 && (search.query !== query ? <p role="status">Mencari tamu...</p> : search.error ? <p role="alert">{search.error}</p> : search.guests.length ? <ul className="space-y-2">{search.guests.map((guest) => <li key={guest.id}><button type="button" disabled={busy} onClick={() => void verify({ eventId, method: "NAME_SEARCH", invitationId: guest.id })} className="w-full rounded-xl border p-4 text-left hover:bg-success-soft focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:opacity-50"><span className="block font-semibold">{guest.guestName}</span><span className="mt-1 block text-sm">{attendance(guest)}</span><span className="mt-1 block break-all text-xs text-muted-foreground">Ref: {guest.id}</span></button></li>)}</ul> : <p role="status">Tidak ada undangan yang cocok. Coba sebagian nama atau hubungi koordinator.</p>)}
+    </Tabs.Panel></Tabs.Root>
     {busy && !verification && <p role="status">Memverifikasi undangan...</p>}
-    {message && <p role="status" className="rounded-xl bg-stone-100 p-3 text-sm">{message}</p>}
+    {message && <p role="status" className="rounded-xl bg-muted p-3 text-sm">{message}</p>}
     <Dialog open={!!verification} onOpenChange={(open) => { if (!open && !busy && !attempt) setVerification(null); }}>
       <DialogContent showCloseButton={!busy && !attempt} className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>Verifikasi kedatangan</DialogTitle><DialogDescription>Pastikan undangan ini benar sebelum mencatat kehadiran.</DialogDescription></DialogHeader>
-        {verification?.ticket && <p className="rounded-lg bg-amber-50 p-3 text-sm">Tiket {verification.ticket.queueCode} · Nama yang dimasukkan: {verification.ticket.submittedName}. Pastikan cocok dengan undangan yang dipilih di bawah.</p>}
-        {verification && <><div className="space-y-2"><p className="text-lg font-semibold">{verification.invitation.guestName}</p><p>{verification.event.name}</p><p className="break-all text-xs text-stone-500">Ref: {verification.invitation.id}</p><dl className="grid grid-cols-2 gap-2 rounded-xl bg-emerald-50 p-3"><dt>Kuota undangan</dt><dd>{verification.invitation.guestQuota}</dd><dt>Sudah hadir</dt><dd>{verification.invitation.checkedInCount ?? 0}</dd><dt>Sisa kuota</dt><dd>{remaining}</dd></dl></div>
+        {verification?.ticket && <p className="rounded-lg bg-warning-soft p-3 text-sm">Tiket {verification.ticket.queueCode} · Nama yang dimasukkan: {verification.ticket.submittedName}. Pastikan cocok dengan undangan yang dipilih di bawah.</p>}
+        {verification && <><div className="space-y-2"><p className="text-lg font-semibold">{verification.invitation.guestName}</p><p>{verification.event.name}</p><p className="break-all text-xs text-muted-foreground">Ref: {verification.invitation.id}</p><dl className="grid grid-cols-2 gap-2 rounded-xl bg-success-soft p-3"><dt>Kuota undangan</dt><dd>{verification.invitation.guestQuota}</dd><dt>Sudah hadir</dt><dd>{verification.invitation.checkedInCount ?? 0}</dd><dt>Sisa kuota</dt><dd>{remaining}</dd></dl></div>
           <Label htmlFor="arrival-count">Jumlah yang datang sekarang</Label><Input id="arrival-count" className="min-h-12" type="number" min={1} max={remaining} value={count} onChange={(event) => setCount(event.target.value)} disabled={busy || !!attempt} />
           <label className="flex min-h-12 items-start gap-3 rounded-lg border p-3"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-emerald-700" checked={confirmed} disabled={busy || !!attempt} onChange={(event) => setConfirmed(event.target.checked)} /><span>Saya sudah mencocokkan undangan dan mengonfirmasi identitas tamu secara manual.</span></label>
           {!remaining && <p role="status">Kuota sudah penuh. Tidak ada kedatangan tambahan yang dapat dicatat.</p>}
@@ -137,6 +140,6 @@ export function CheckinForm({ eventId }: { eventId: string }) {
         </>}
       </DialogContent>
     </Dialog>
-    <section className="border-t pt-4"><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">Kedatangan terbaru</h3><Button variant="outline" onClick={() => void loadHistory()}>Muat ulang</Button></div>{historyError && <p role="alert">{historyError}</p>}{history.length ? <ul className="mt-3 divide-y">{history.map((arrival) => <li key={arrival.id} className="py-3 text-sm"><p className="font-medium">{arrival.invitation.guestName} · +{arrival.count} orang</p><p className="text-stone-600">{arrival.method} · {arrival.user?.name ?? "Petugas lama"}{arrival.legacy ? " · Riwayat migrasi" : ""}</p><p className="text-xs text-stone-500">{new Date(arrival.createdAt).toLocaleString("id-ID")}</p></li>)}</ul> : !historyError && <p className="mt-3 text-sm text-stone-500">Belum ada kedatangan tercatat.</p>}</section>
+    <section className="border-t pt-4"><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">Kedatangan terbaru</h3><Button variant="outline" onClick={() => void loadHistory()}>Muat ulang</Button></div>{historyError && <p role="alert">{historyError}</p>}{history.length ? <ul className="mt-3 divide-y">{history.map((arrival) => <li key={arrival.id} className="py-3 text-sm"><p className="font-medium">{arrival.invitation.guestName} · +{arrival.count} orang</p><p className="text-muted-foreground">{arrival.method} · {arrival.user?.name ?? "Petugas lama"}{arrival.legacy ? " · Riwayat migrasi" : ""}</p><p className="text-xs text-muted-foreground">{new Date(arrival.createdAt).toLocaleString("id-ID")}</p></li>)}</ul> : !historyError && <p className="mt-3 text-sm text-muted-foreground">Belum ada kedatangan tercatat.</p>}</section>
   </section>;
 }
