@@ -162,6 +162,16 @@
   .metric-value { @apply mt-3 text-3xl font-medium tracking-tight text-primary tabular-nums; }
   .skip-link { @apply fixed top-2 left-2 z-[100] -translate-y-24 rounded-md bg-primary px-4 py-3 text-primary-foreground focus:translate-y-0; }
   .checkin-tab { @apply flex min-h-12 items-center justify-center gap-2 rounded-md px-2 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-primary data-active:bg-card data-active:text-primary data-active:shadow-xs disabled:opacity-50; }
+  .event-section-link { @apply inline-flex min-h-11 items-center rounded-md px-3 py-2 text-sm font-medium text-primary hover:bg-accent; }
+}
+@media (max-width: 767px) {
+  .guest-table, .guest-table tbody { display: block; }
+  .guest-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .guest-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr); padding: 1rem; }
+  .guest-table td { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; padding: .4rem 0; white-space: normal; }
+  .guest-table td[data-label]::before { content: attr(data-label); color: var(--muted-foreground); font-size: .75rem; }
+  .guest-table td.guest-identity { display: block; max-width: none; padding-top: 0; }
+  .guest-table td.guest-actions { padding-top: .75rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }

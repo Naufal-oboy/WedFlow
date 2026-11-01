@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
