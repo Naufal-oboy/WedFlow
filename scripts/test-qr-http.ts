@@ -66,7 +66,8 @@ export async function testQrHttp({ admin, guest, client, staff, eventIds, invita
   const page = await admin.request(`/admin/events/${eventIds[0]}/guests`);
   assert.equal(page.status, 200);
   const pageHtml = await page.text();
-  for (const label of ["Lihat QR", "Download QR", "Print undangan", "Updated QR guest"]) assert.ok(pageHtml.includes(label), label);
+  // Download and print are in the QR dialog; their actual behavior is covered below.
+  for (const label of ["Lihat QR", "Kelola", "Updated QR guest"]) assert.ok(pageHtml.includes(label), label);
   if (process.env.QR_BROWSER_TESTS === "1") {
     await testQrBrowser({ base, eventId: eventIds[0], invitationId: stored.id, code: stored.code, cookies: admin.cookies });
   }

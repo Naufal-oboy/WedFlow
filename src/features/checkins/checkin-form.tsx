@@ -34,6 +34,8 @@ export function CheckinForm({ eventId }: { eventId: string }) {
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [searchRetry, setSearchRetry] = useState(0);
   const [dialogError, setDialogError] = useState("");
   const [attempt, setAttempt] = useState<ArrivalInput | null>(null);
   const [history, setHistory] = useState<Arrival[]>([]);
@@ -64,12 +66,12 @@ export function CheckinForm({ eventId }: { eventId: string }) {
         .catch((error: Error) => { if (!controller.signal.aborted) setSearch({ query, guests: [], error: error.message }); });
     }, 300);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [query, eventId, tab, verification]);
+  }, [query, eventId, tab, verification, searchRetry]);
 
   const verify = useCallback(async (input: VerifyInput) => {
     if (lock.current) return;
     lock.current = true;
-    setBusy(true); setCameraOpen(false); setMessage("");
+    setBusy(true); setCameraOpen(false); setMessage(""); setSuccess(false);
     try {
       const result = await requestJson("/api/checkins/verify", input);
       if (!mounted.current) return;
@@ -96,6 +98,7 @@ export function CheckinForm({ eventId }: { eventId: string }) {
         setDialogError(`${result.error ?? "Check-in gagal."}${rejected ? " Tutup dialog dan verifikasi kembali sebelum mencoba." : " Coba ulang transaksi yang sama."}`);
         return;
       }
+      setSuccess(true);
       setMessage(`Check-in berhasil: ${result.arrival.count} orang. Sisa kuota ${result.invitation.guestQuota - (result.invitation.checkedInCount ?? 0)} orang.${result.replayed ? " Retry terkonfirmasi; tidak ada tambahan pencatatan." : ""}`);
       setVerification(null); setAttempt(null); setCode(""); setQuery("");
       setQueueVersion(value => value + 1);
@@ -122,19 +125,21 @@ export function CheckinForm({ eventId }: { eventId: string }) {
     </Tabs.Panel><Tabs.Panel value="NAME_SEARCH" className="space-y-3">
       <Label htmlFor="guest-search">Nama tamu</Label><Input id="guest-search" className="min-h-12" placeholder="Ketik minimal 2 karakter" value={query} maxLength={100} onChange={(event) => setQuery(event.target.value)} autoComplete="off" disabled={busy} />
       <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning">Nama bukan bukti identitas. Cocokkan nama, kuota, dan referensi undangan dengan tamu atau koordinator; nama sama tetap undangan terpisah.</p>
-      {query.trim().length >= 2 && (search.query !== query ? <p role="status">Mencari tamu...</p> : search.error ? <p role="alert">{search.error}</p> : search.guests.length ? <ul className="space-y-2">{search.guests.map((guest) => <li key={guest.id}><button type="button" disabled={busy} onClick={() => void verify({ eventId, method: "NAME_SEARCH", invitationId: guest.id })} className="w-full rounded-xl border p-4 text-left hover:bg-success-soft focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:opacity-50"><span className="block font-semibold">{guest.guestName}</span><span className="mt-1 block text-sm">{attendance(guest)}</span><span className="mt-1 block break-all text-xs text-muted-foreground">Ref: {guest.id}</span></button></li>)}</ul> : <p role="status">Tidak ada undangan yang cocok. Coba sebagian nama atau hubungi koordinator.</p>)}
+      {query.trim().length >= 2 && (search.query !== query ? <p role="status">Mencari tamu...</p> : search.error ? <div role="alert" className="space-y-2 rounded-lg bg-destructive/5 p-3 text-destructive"><p>{search.error}</p><Button variant="outline" onClick={() => { setSearch({ query: "", guests: [] }); setSearchRetry(value => value + 1); }}>Coba lagi</Button></div> : search.guests.length ? <ul className="space-y-2">{search.guests.map((guest) => <li key={guest.id}><button type="button" disabled={busy} onClick={() => void verify({ eventId, method: "NAME_SEARCH", invitationId: guest.id })} className="w-full rounded-lg border p-4 text-left hover:bg-success-soft focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"><span className="block break-words font-semibold">{guest.guestName}</span><span className="mt-1 block text-sm">{attendance(guest)}</span><span className="mt-1 block break-all text-xs text-muted-foreground">Ref: {guest.id}</span></button></li>)}</ul> : <p role="status">Tidak ada undangan yang cocok. Coba sebagian nama atau hubungi koordinator.</p>)}
     </Tabs.Panel></Tabs.Root>
     {busy && !verification && <p role="status">Memverifikasi undangan...</p>}
-    {message && <p role="status" className="rounded-xl bg-muted p-3 text-sm">{message}</p>}
+    {message && <div role={success ? "status" : "alert"} className={`rounded-lg border p-4 ${success ? "border-success/20 bg-success-soft text-success" : "border-destructive/20 bg-destructive/5 text-destructive"}`}><p className="font-semibold">{success ? "Kehadiran tersimpan" : "Undangan belum dapat diverifikasi"}</p><p className="mt-1 text-sm leading-6">{message}</p>{success && <p className="mt-2 text-sm">Siap menyambut tamu berikutnya.</p>}</div>}
     <Dialog open={!!verification} onOpenChange={(open) => { if (!open && !busy && !attempt) setVerification(null); }}>
       <DialogContent showCloseButton={!busy && !attempt} className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>Verifikasi kedatangan</DialogTitle><DialogDescription>Pastikan undangan ini benar sebelum mencatat kehadiran.</DialogDescription></DialogHeader>
         {verification?.ticket && <p className="rounded-lg bg-warning-soft p-3 text-sm">Tiket {verification.ticket.queueCode} · Nama yang dimasukkan: {verification.ticket.submittedName}. Pastikan cocok dengan undangan yang dipilih di bawah.</p>}
-        {verification && <><div className="space-y-2"><p className="text-lg font-semibold">{verification.invitation.guestName}</p><p>{verification.event.name}</p><p className="break-all text-xs text-muted-foreground">Ref: {verification.invitation.id}</p><dl className="grid grid-cols-2 gap-2 rounded-xl bg-success-soft p-3"><dt>Kuota undangan</dt><dd>{verification.invitation.guestQuota}</dd><dt>Sudah hadir</dt><dd>{verification.invitation.checkedInCount ?? 0}</dd><dt>Sisa kuota</dt><dd>{remaining}</dd></dl></div>
-          <Label htmlFor="arrival-count">Jumlah yang datang sekarang</Label><Input id="arrival-count" className="min-h-12" type="number" min={1} max={remaining} value={count} onChange={(event) => setCount(event.target.value)} disabled={busy || !!attempt} />
-          <label className="flex min-h-12 items-start gap-3 rounded-lg border p-3"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-emerald-700" checked={confirmed} disabled={busy || !!attempt} onChange={(event) => setConfirmed(event.target.checked)} /><span>Saya sudah mencocokkan undangan dan mengonfirmasi identitas tamu secara manual.</span></label>
+        {verification && <><div className="space-y-2"><p className="text-lg font-semibold">{verification.invitation.guestName}</p><p>{verification.event.name}</p><p className="break-all text-xs text-muted-foreground">Ref: {verification.invitation.id}</p><dl className="grid grid-cols-2 gap-2 rounded-lg bg-success-soft p-3"><dt>Kuota undangan</dt><dd>{verification.invitation.guestQuota}</dd><dt>Sudah hadir</dt><dd>{verification.invitation.checkedInCount ?? 0}</dd><dt className="font-semibold text-primary">Sisa kuota</dt><dd className="text-xl font-bold text-primary tabular-nums">{remaining}</dd></dl></div>
+          <Label htmlFor="arrival-count">Jumlah yang datang sekarang</Label><Input id="arrival-count" className="min-h-12 text-lg font-semibold" type="number" min={1} max={remaining} step={1} value={count} onChange={(event) => setCount(event.target.value)} disabled={busy || !!attempt} aria-invalid={!validCount && remaining > 0} aria-describedby="arrival-help" />
+          <p id="arrival-help" className="text-sm text-muted-foreground">{remaining > 0 ? `Pilih 1–${remaining} orang. Catat hanya tamu yang datang sekarang.` : "Tidak ada sisa kuota."}</p>
+          {remaining > 1 && <div aria-label="Pilihan jumlah kedatangan" className="flex flex-wrap gap-2">{Array.from({ length: Math.min(remaining, 4) }, (_, index) => index + 1).map(value => <Button key={value} variant={count === String(value) ? "default" : "outline"} className="min-h-12 min-w-12" aria-pressed={count === String(value)} disabled={busy || !!attempt} onClick={() => setCount(String(value))}>{value} orang</Button>)}</div>}
+          <label className="flex min-h-12 items-start gap-3 rounded-lg border p-3"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-primary" checked={confirmed} disabled={busy || !!attempt} onChange={(event) => setConfirmed(event.target.checked)} /><span>Saya sudah mencocokkan undangan dan mengonfirmasi identitas tamu secara manual.</span></label>
           {!remaining && <p role="status">Kuota sudah penuh. Tidak ada kedatangan tambahan yang dapat dicatat.</p>}
-          {dialogError && <p role="alert" className="text-sm text-red-700">{dialogError}</p>}
+          {dialogError && <p role="alert" className="text-sm text-destructive">{dialogError}</p>}
           <Button className="min-h-12 w-full" disabled={busy || !confirmed || !validCount || (!!dialogError && !attempt)} onClick={() => void confirmArrival()}>{busy ? "Mencatat..." : attempt ? "Coba ulang transaksi" : "Konfirmasi check-in"}</Button>
           {!attempt && <Button className="min-h-12" variant="outline" disabled={busy} onClick={() => setVerification(null)}>Batal / verifikasi ulang</Button>}
         </>}

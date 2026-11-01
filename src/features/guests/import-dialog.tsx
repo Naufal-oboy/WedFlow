@@ -38,7 +38,7 @@ export function ImportGuestDialog({ eventId }: { eventId: string }) {
       catch { throw new Error("File harus menggunakan encoding UTF-8 yang valid."); }
       const data = await request({ mode: "preview", csv: content });
       setCsv(content); setPreview(data);
-    } catch (error) { setError(error instanceof Error ? error.message : "Koneksi terganggu."); }
+    } catch (error) { setError(error instanceof TypeError ? "Koneksi terganggu. Periksa koneksi lalu coba lagi." : error instanceof Error ? error.message : "Koneksi terganggu."); }
     finally { setPending(false); }
   }
   async function confirm() {
@@ -48,7 +48,7 @@ export function ImportGuestDialog({ eventId }: { eventId: string }) {
       const result = await request({ mode: "confirm", csv, token: preview.token, allowDuplicateNames: duplicates });
       toast.success(`${result.imported} tamu berhasil diimpor.`);
       setPreview(null); setCsv(""); setOpen(false); router.refresh();
-    } catch (error) { setError(error instanceof Error ? error.message : "Koneksi terganggu."); }
+    } catch (error) { setError(error instanceof TypeError ? "Koneksi terganggu. Periksa koneksi lalu coba lagi." : error instanceof Error ? error.message : "Koneksi terganggu."); }
     finally { setPending(false); }
   }
   return <>
@@ -56,14 +56,15 @@ export function ImportGuestDialog({ eventId }: { eventId: string }) {
     <Dialog open={open} onOpenChange={(value) => { if (!pending) setOpen(value); }}>
       <DialogContent className="wedflow-theme max-h-[90dvh] overflow-y-auto sm:max-w-4xl" showCloseButton={!pending}>
         <DialogHeader><DialogTitle>Impor daftar tamu</DialogTitle><DialogDescription>CSV UTF-8, maksimal 256 KiB dan 500 baris. Periksa preview lalu konfirmasi untuk menyimpan seluruh data.</DialogDescription></DialogHeader>
-        <div className="rounded-lg bg-warning-soft p-3 text-sm text-stone-700"><p>Gunakan pemisah koma dengan format:</p><pre className="mt-2 overflow-x-auto text-xs">{"guestName,guestQuota\nBudi Santoso,2\nSiti Aminah,1"}</pre></div>
+        <ol aria-label="Tahapan impor" className="flex flex-wrap gap-x-6 gap-y-2 border-y py-3 text-sm"><li aria-current={!preview ? "step" : undefined} className={!preview ? "font-semibold text-primary" : "text-muted-foreground"}>1. Pilih CSV</li><li aria-current={preview ? "step" : undefined} className={preview ? "font-semibold text-primary" : "text-muted-foreground"}>2. Periksa & konfirmasi</li></ol>
+        <div className="rounded-lg bg-muted p-3 text-sm text-foreground"><p>Gunakan pemisah koma dengan format:</p><pre className="mt-2 overflow-x-auto text-xs">{"guestName,guestQuota\nBudi Santoso,2\nSiti Aminah,1"}</pre></div>
         <form className="flex flex-wrap items-end gap-3" onSubmit={showPreview}>
           <div className="min-w-0 flex-1 space-y-2"><Label htmlFor="guestCsv">File CSV</Label><Input id="guestCsv" name="file" type="file" accept=".csv,text/csv" required disabled={pending} onChange={() => { setPreview(null); setCsv(""); setError(""); setDuplicates(false); }} /></div>
           <Button type="submit" disabled={pending}>{pending ? "Memproses..." : "Lihat preview"}</Button>
         </form>
-        {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="rounded-lg bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
         {preview && <div className="space-y-4">
-          <p role="status" className="text-sm font-medium">{preview.valid} valid · {preview.invalid} invalid · {preview.duplicates} baris dengan nama duplikat</p>
+          <div role="status" className="space-y-2 rounded-lg bg-muted p-4"><p className="text-sm font-medium">{preview.valid} valid · {preview.invalid} invalid · {preview.duplicates} baris dengan nama duplikat</p><p className="text-xs text-muted-foreground">Belum ada tamu yang disimpan. Periksa nama dan kuota sebelum mengonfirmasi.</p></div>
           <div className="max-h-80 overflow-auto rounded-xl border border-border"><Table><TableHeader><TableRow><TableHead>Baris</TableHead><TableHead>Nama tamu</TableHead><TableHead>Kuota</TableHead><TableHead>Validasi</TableHead></TableRow></TableHeader><TableBody>{preview.rows.map((row) => <TableRow key={row.line}><TableCell>{row.line}</TableCell><TableCell className="max-w-72 whitespace-normal break-words">{safePreviewCell(row.guestName)}</TableCell><TableCell>{safePreviewCell(row.guestQuota)}</TableCell><TableCell className="max-w-80 whitespace-normal"><span className={row.errors.length ? "text-red-700" : row.duplicate ? "text-amber-800" : "text-primary"}>{row.errors.length ? row.errors.join(" ") : row.duplicate ? "Nama sama dalam CSV atau daftar acara. Akan dibuat undangan terpisah." : "Valid"}</span></TableCell></TableRow>)}</TableBody></Table></div>
           {preview.invalid > 0 && <p className="text-sm text-red-700">Perbaiki semua baris invalid, unggah file, lalu buat preview ulang. Belum ada data yang disimpan.</p>}
           {preview.duplicates > 0 && <label className="flex items-start gap-3 rounded-lg bg-warning-soft p-3 text-sm"><input type="checkbox" checked={duplicates} disabled={pending} onChange={(event) => setDuplicates(event.target.checked)} className="mt-1 accent-emerald-800" />Saya telah memeriksa nama duplikat dan ingin membuat setiap baris sebagai undangan terpisah.</label>}

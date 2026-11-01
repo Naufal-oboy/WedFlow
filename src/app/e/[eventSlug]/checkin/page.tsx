@@ -14,8 +14,8 @@ async function Content({ params }: { params: Promise<{ eventSlug: string }> }) {
   let event;
   try { event = await publicEvent(slug.data); }
   catch (error) { if (error instanceof AccessError) return <p role="alert">{error.message}</p>; throw error; }
-  return <><p className="text-xs tracking-widest text-[#806a3b] uppercase">Selamat datang</p><h1 className="break-words text-2xl font-semibold text-emerald-950">{event.name}</h1><p className="text-sm text-stone-600">Lupa membawa QR undangan? Petugas siap membantu.</p><PublicPrecheckinForm slug={event.slug} /></>;
+  return <><header className="space-y-4 border-b border-champagne pb-6"><p className="eyebrow text-warning">Selamat datang</p><h1 className="editorial-title">{event.name}</h1><p className="text-sm leading-6 text-muted-foreground">Kami senang menyambut Anda. Jika QR undangan tidak tersedia, isi nama untuk mendapatkan tiket verifikasi petugas.</p></header><PublicPrecheckinForm slug={event.slug} /></>;
 }
 export default function Page(props: { params: Promise<{ eventSlug: string }> }) {
-  return <main className="wedflow-theme flex min-h-screen justify-center bg-[#faf8f2] px-4 py-10 text-stone-800"><div className="w-full max-w-md space-y-8"><div className="text-emerald-950"><Brand /></div><section className="space-y-5 rounded-2xl border border-[#d8c79e] bg-white p-5 sm:p-8"><Suspense fallback={<p role="status">Menyiapkan acara...</p>}><Content {...props} /></Suspense></section></div></main>;
+  return <main className="wedflow-theme min-h-dvh bg-background px-5 py-8 text-foreground sm:py-14"><div className="mx-auto w-full max-w-lg"><div className="mb-10 text-primary"><Brand /></div><section className="space-y-7"><Suspense fallback={<div role="status" className="space-y-4"><div aria-hidden="true" className="h-24 animate-pulse rounded-lg bg-muted" /><p>Menyiapkan acara...</p></div>}><Content {...props} /></Suspense></section><footer className="mt-10 border-t border-champagne pt-5 text-xs leading-5 text-muted-foreground">Butuh bantuan? Silakan temui petugas di pintu masuk.</footer></div></main>;
 }

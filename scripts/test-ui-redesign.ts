@@ -6,6 +6,7 @@ import { chromium, expect, type Page, type BrowserContext } from "@playwright/te
 import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/features/auth/password";
 import { generateInvitationCode } from "../src/features/invitations/qr";
+import { testGuestExperience } from "./test-guest-experience-ui";
 
 const base = process.env.AUTH_TEST_URL ?? "http://localhost:3100";
 if (!["localhost", "127.0.0.1"].includes(new URL(base).hostname)) throw new Error("Use a local test server.");
@@ -126,6 +127,7 @@ async function main() {
         await page.screenshot({ path: `docs/ui-redesign/${label}.png`, fullPage: true });
       }
     }
+    await testGuestExperience({ admin, staff, client, base, eventId, slug: prefix });
     await prisma.eventStaff.deleteMany({ where: { eventId } });
     await staff.goto(`${base}/staff`);
     await expect(staff.getByText("Belum ada acara untuk ditampilkan")).toBeVisible();

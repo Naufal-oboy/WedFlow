@@ -59,6 +59,11 @@ Warm Ivory, dan Champagne, navigasi mobile, serta kontrol check-in yang ramah
 sentuhan dan keyboard. Audit, keputusan desain, dan pengujian tersedia di
 [UI/UX Redesign Sprint 1](./docs/ui-redesign.md).
 
+Sprint 2 menyempurnakan pengelolaan tamu, navigasi detail acara, preview QR,
+alur tiket publik, dan verifikasi petugas. Audit, perubahan per halaman,
+screenshot, hasil pengujian, dan batasan ada di
+[Operational Experience & Guest Journey](./docs/guest-experience.md).
+
 > **Status pengembangan:** Project masih dalam tahap pembangunan. Fitur yang dijelaskan di bawah merupakan cakupan produk yang direncanakan; ketersediaan setiap fitur perlu diperiksa pada implementasi terbaru.
 
 ## ✨ Fitur Utama
