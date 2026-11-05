@@ -151,6 +151,10 @@
   }
   :where(h1, h2, h3, p, dd) { overflow-wrap: anywhere; }
   :where(input, select, textarea) { accent-color: var(--primary); }
+  :where(select, fieldset) { min-width: 0; }
+  :where(select) { max-width: 100%; }
+  :where(a, button, select, summary) { transition-duration: 150ms; }
+  :where(select[aria-invalid="true"]) { border-color: var(--destructive); }
   :where(section[id], main[id]) { scroll-margin-top: 6rem; }
 }
 @layer components {
@@ -174,5 +178,5 @@
   .guest-table td.guest-actions { padding-top: .75rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }

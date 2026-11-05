@@ -1,3 +1,4 @@
+import { auditAccessibility } from "./ui-accessibility";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { expect, type Page } from "@playwright/test";
@@ -17,10 +18,11 @@ export async function testGuestExperience({ admin, staff, client, base, eventId,
     }
   };
   const capture = async (page: Page, name: string) => {
+    await auditAccessibility(page);
     if (!process.env.GUEST_SCREENSHOTS) return;
-    await mkdir("docs/guest-experience", { recursive: true });
+    await mkdir("test-results/ux-polish", { recursive: true });
     await page.evaluate(() => document.fonts.ready);
-    await page.screenshot({ path: `docs/guest-experience/${name}.png` });
+    await page.screenshot({ path: `test-results/ux-polish/${name}.png` });
   };
   try {
     const initial = await (await admin.request.get(api)).json();
