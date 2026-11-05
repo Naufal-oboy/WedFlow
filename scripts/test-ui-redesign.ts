@@ -6,6 +6,8 @@ import { chromium, expect, type Page, type BrowserContext } from "@playwright/te
 import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/features/auth/password";
 import { generateInvitationCode } from "../src/features/invitations/qr";
+import { auditAccessibility } from "./ui-accessibility";
+import { testUxPolish } from "./test-ux-polish";
 import { testGuestExperience } from "./test-guest-experience-ui";
 
 const base = process.env.AUTH_TEST_URL ?? "http://localhost:3100";
@@ -53,12 +55,13 @@ async function main() {
     pages.forEach(page => page.on("pageerror", error => errors.push(error.message)));
     const [admin, client, staff] = pages;
     const cases: [Page, string, string][] = [[admin, "/admin", "admin"], [admin, "/admin/events", "events"], [admin, "/admin/clients", "clients"], [admin, "/admin/users", "users"], [admin, "/admin/staff", "assignments"], [admin, "/admin/clients/new", "client-form"], [admin, "/admin/events/new", "event-form"], [admin, `/admin/events/${eventId}/guests`, "guests"], [client, "/client", "client"], [client, `/client/events/${eventId}`, "client-event"], [staff, "/staff", "staff"], [staff, `/staff/events/${eventId}`, "checkin"]];
-    for (const width of [1440, 768, 390, 320]) {
+    for (const width of [1440, 1024, 768, 390, 320]) {
       for (const [page, route, label] of cases) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${base}${route}`);
         await expect(page.locator("main h1")).toBeVisible();
         await fits(page, `${label} ${width}`);
+        if (width === 1440 || width === 390) await auditAccessibility(page);
         if (width < 1024) {
           const trigger = page.getByRole("button", { name: "Buka navigasi" });
           await trigger.click();
@@ -96,7 +99,7 @@ async function main() {
       await expect.poll(() => verification.evaluate(element => element.contains(document.activeElement))).toBe(true);
       checks++;
     }
-    for (const width of [320, 390, 768, 1440]) { await staff.setViewportSize({ width, height: 700 }); await fits(staff, `dialog ${width}`); }
+    for (const width of [320, 390, 768, 1024, 1440]) { await staff.setViewportSize({ width, height: 700 }); await fits(staff, `dialog ${width}`); }
     await staff.keyboard.press("Escape");
     await expect(verification).toBeHidden();
     check(await prisma.checkinLog.count({ where: { eventId } }) === 0, "UI verification never records attendance without submit");
@@ -121,18 +124,19 @@ async function main() {
     const tokens = await staff.evaluate(() => Object.fromEntries(["primary", "primary-foreground", "background", "foreground", "muted-foreground", "card", "success", "success-soft", "warning", "warning-soft"].map(name => [name, getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim()])));
     for (const [fg, bg] of [["primary", "primary-foreground"], ["foreground", "background"], ["muted-foreground", "background"], ["muted-foreground", "card"], ["success", "success-soft"], ["warning", "warning-soft"]]) check(contrast(tokens[fg], tokens[bg]) >= 4.5, `${fg}/${bg} WCAG AA text contrast`);
     if (process.env.UI_SCREENSHOTS) {
-      await mkdir("docs/ui-redesign", { recursive: true });
+      await mkdir("test-results/ux-polish", { recursive: true });
       for (const [page, route, label, width] of [[admin, "/admin", "admin-desktop", 1440], [client, "/client", "client-desktop", 1440], [staff, "/staff", "staff-mobile", 390], [staff, `/staff/events/${eventId}`, "checkin-mobile", 390]] as const) {
         await page.setViewportSize({ width, height: 1000 }); await page.goto(`${base}${route}`); await expect(page.locator("main h1")).toBeVisible(); await page.evaluate(() => document.fonts.ready);
-        await page.screenshot({ path: `docs/ui-redesign/${label}.png`, fullPage: true });
+        await page.screenshot({ path: `test-results/ux-polish/${label}.png`, fullPage: true });
       }
     }
+    await testUxPolish({ admin, staff, client, base, eventId });
     await testGuestExperience({ admin, staff, client, base, eventId, slug: prefix });
     await prisma.eventStaff.deleteMany({ where: { eventId } });
     await staff.goto(`${base}/staff`);
     await expect(staff.getByText("Belum ada acara untuk ditampilkan")).toBeVisible();
     check(errors.length === 0, `No browser exceptions: ${errors.join("; ")}`);
-    console.log(`UI redesign: ${checks} assertions plus browser expectations passed; 1440/768/390/320px, navigation, focus, dialog, validation, contrast, empty state.`);
+    console.log(`UI redesign: ${checks} assertions plus browser expectations passed; 1440/1024/768/390/320px, navigation, focus, dialog, validation, contrast, empty state.`);
   } finally { await browser.close(); }
 }
 main().finally(async () => {

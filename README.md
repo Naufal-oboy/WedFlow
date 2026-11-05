@@ -64,6 +64,9 @@ alur tiket publik, dan verifikasi petugas. Audit, perubahan per halaman,
 screenshot, hasil pengujian, dan batasan ada di
 [Operational Experience & Guest Journey](./docs/guest-experience.md).
 
+Audit aksesibilitas, perbaikan UX, screenshot lokal, dan hasil pengujian Sprint 3 tersedia di
+[UX Polish & Visual QA](./docs/ux-polish.md).
+
 > **Status pengembangan:** Project masih dalam tahap pembangunan. Fitur yang dijelaskan di bawah merupakan cakupan produk yang direncanakan; ketersediaan setiap fitur perlu diperiksa pada implementasi terbaru.
 
 ## ✨ Fitur Utama

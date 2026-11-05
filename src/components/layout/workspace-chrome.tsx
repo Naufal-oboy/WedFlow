@@ -30,7 +30,7 @@ export function WorkspaceChrome({ role, name }: { role: Role; name: string }) {
       <nav aria-label="Breadcrumb" className="min-w-0 text-sm">
         <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <li><Link className="text-muted-foreground hover:text-primary" href={roleHome[role]}>Ruang kerja</Link></li>
-          {segments.slice(1).map((segment, index) => <li key={`${segment}-${index}`} className="flex items-center gap-2"><ChevronRight className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />{index === segments.length - 2 ? <span aria-current="page" className="font-medium">{labels[segment] ?? "Detail"}</span> : <Link className="text-muted-foreground hover:text-primary" href={`/${segments.slice(0, index + 2).join("/")}`}>{labels[segment] ?? "Detail"}</Link>}</li>)}
+          {segments.slice(1).map((segment, index) => <li key={`${segment}-${index}`} className="flex items-center gap-2"><ChevronRight className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />{index === segments.length - 2 ? <span aria-current="page" className="font-medium">{labels[segment] ?? "Detail"}</span> : <Link className="text-muted-foreground hover:text-primary" href={segment === "events" && role !== "SUPER_ADMIN" ? `${roleHome[role]}#events` : `/${segments.slice(0, index + 2).join("/")}`}>{labels[segment] ?? "Detail"}</Link>}</li>)}
           {segments.length === 1 && <li className="flex items-center gap-2"><ChevronRight className="size-3" aria-hidden="true" /><span aria-current="page">Ringkasan</span></li>}
         </ol>
       </nav>
