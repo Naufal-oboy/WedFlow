@@ -500,5 +500,24 @@ tepercaya, limit bersama digunakan; konfigurasi ingress dan limit operasional
 harus ditinjau sebelum pilot. Detail API, keamanan, pengujian, dan batasan ada
 di [Public QR Pre-check-in](./docs/public-precheckin.md).
 
+## 23. Implementasi Sprint 7
+
+Detail event menyediakan statistik kehadiran terkonfirmasi, aktivitas terbaru,
+grafik kedatangan, polling 15 detik saat tab aktif, dan indikator data kedaluwarsa
+ketika refresh gagal. Persentase memakai jumlah orang hadir dibagi total kuota
+undangan. Sumber kehadiran adalah `CheckinLog`, termasuk kedatangan bertahap;
+tiket publik bukan kehadiran.
+
+Admin dan client pemilik acara dapat mengunduh CSV; staff yang ditugaskan dapat
+memantau statistik operasional. Semua akses memakai session dan event scope
+di server. Zona IANA pada event mengatur tampilan laporan, sementara jadwal
+acara tetap diinput dalam WIB dan timestamp disimpan menurut konvensi UTC.
+
+API aktual: GET `/api/events/[eventId]/attendance` dan GET
+`/api/events/[eventId]/attendance/export`. Ekspor memakai snapshot konsisten,
+batch 500 undangan, dan perlindungan formula spreadsheet. PDF dan WebSocket
+tidak termasuk. Audit, migrasi, daftar file, pengujian dan batasan tersedia pada
+[Live Attendance & Reporting](./docs/attendance-reporting.md).
+
 **Dokumen ini merupakan baseline PRD WedFlow v1.0** dengan keputusan implementasi
-Sprint 5–6, dan dapat direvisi setelah audit serta uji coba di acara nyata.
+Sprint 5–7, dan dapat direvisi setelah audit serta uji coba di acara nyata.

@@ -67,6 +67,12 @@ screenshot, hasil pengujian, dan batasan ada di
 Audit aksesibilitas, perbaikan UX, screenshot lokal, dan hasil pengujian Sprint 3 tersedia di
 [UX Polish & Visual QA](./docs/ux-polish.md).
 
+Sprint 7 menambahkan dashboard kehadiran langsung per acara, polling 15 detik,
+grafik kedatangan sesuai zona waktu, serta ekspor CSV untuk admin dan client
+pemilik acara. Statistik bersumber dari check-in terkonfirmasi; tiket publik
+belum terverifikasi tidak dihitung. Lihat [Live Attendance & Reporting](./docs/attendance-reporting.md)
+untuk definisi metrik, migrasi, keamanan, hasil pengujian, dan batasan.
+
 > **Status pengembangan:** Project masih dalam tahap pembangunan. Fitur yang dijelaskan di bawah merupakan cakupan produk yang direncanakan; ketersediaan setiap fitur perlu diperiksa pada implementasi terbaru.
 
 ## ✨ Fitur Utama
@@ -301,7 +307,7 @@ Status berikut merupakan **rencana pengembangan**, bukan klaim bahwa semua modul
 - [x] Smart Name Search untuk tamu tanpa QR.
 - [x] Check-in bertahap, riwayat kedatangan, proteksi kuota dan replay.
 - [x] Public QR Pre-check-in dan tiket sementara dengan verifikasi petugas.
-- [ ] Dashboard kehadiran real-time dan laporan.
+- [x] Dashboard kehadiran dengan polling 15 detik dan laporan CSV.
 - [ ] Pengujian keamanan, performa, dan deployment.
 - [ ] Dukungan offline-first *(pengembangan lanjutan)*.
 

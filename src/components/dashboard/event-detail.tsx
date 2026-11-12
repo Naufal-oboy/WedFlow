@@ -1,3 +1,4 @@
+import { AttendanceDashboard } from "@/features/attendance/dashboard";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { StatusBadge, linkButton } from "./management-ui";
@@ -16,10 +17,7 @@ export async function EventDetail({ role, params }: { role: Role; params: Promis
   const scope = { AND: [{ id: eventId }, eventScope(user)] };
   const event = await prisma.event.findFirst({ where: scope, select: eventSelect });
   if (!event) notFound();
-  const [attendance, guests] = await Promise.all([
-    prisma.invitation.aggregate({ where: { event: scope, checkedInAt: { not: null } }, _sum: { checkedInCount: true } }),
-    prisma.invitation.findMany({ where: { event: scope }, select: { id: true, guestName: true, guestQuota: true, checkedInAt: true, checkedInCount: true }, take: 100, orderBy: { guestName: "asc" } }),
-  ]);
+  const guests = await prisma.invitation.findMany({ where: { event: scope }, select: { id: true, guestName: true, guestQuota: true, checkedInAt: true, checkedInCount: true }, take: 100, orderBy: { guestName: "asc" } });
   const assignment = role === "SUPER_ADMIN" ? await Promise.all([
     prisma.user.findMany({ where: { role: "STAFF" }, select: { id: true, name: true, email: true }, orderBy: { name: "asc" } }),
     prisma.eventStaff.findMany({ where: { eventId }, select: { userId: true } }),
@@ -39,7 +37,7 @@ export async function EventDetail({ role, params }: { role: Role; params: Promis
       {admin && <a className="event-section-link" href="#settings">Pengaturan</a>}
     </nav>
     {event.client.status === "INACTIVE" && <p className="rounded-xl bg-warning-soft p-4 text-sm text-warning">Client nonaktif. Akses client, staff, dan check-in diblokir.</p>}
-    <section id="overview" aria-label="Laporan kehadiran" className="grid grid-cols-2 gap-4"><div><p className="text-sm text-muted-foreground">Tamu hadir</p><p className="mt-2 text-3xl font-semibold text-primary tabular-nums">{attendance._sum.checkedInCount ?? 0}<span className="ml-2 text-sm font-normal text-muted-foreground">orang</span></p></div><div className="border-l pl-4 sm:pl-8"><p className="text-sm text-muted-foreground">Undangan terdaftar</p><p className="mt-2 text-3xl font-semibold text-primary tabular-nums">{event._count.invitations}</p></div></section>
+    <AttendanceDashboard key={event.id} eventId={event.id} canExport={role !== "STAFF"} />
     {role !== "CLIENT" && <section id="checkin" aria-label="Operasional check-in">{active ? <CheckinForm key={event.id} eventId={event.id} /> : <p className="rounded-lg bg-warning-soft p-4 text-sm text-warning">Check-in tersedia ketika acara dan client berstatus aktif.</p>}</section>}
     {admin && active && <section id="public-precheckin" className="space-y-4 border-y py-6"><div><p className="eyebrow mb-2">Untuk pintu masuk</p><h2 className="text-lg font-semibold">QR umum & pre-check-in</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Pasang QR umum di lokasi acara. Tamu mengisi nama dan mendapatkan tiket sementara untuk diverifikasi petugas.</p></div><div className="flex flex-wrap gap-3"><a className={linkButton} href={`/api/admin/events/${event.id}/public-qr`} target="_blank" rel="noopener noreferrer">Lihat / cetak QR umum<span className="sr-only"> (tab baru)</span></a><a className="event-section-link border" href={`/api/admin/events/${event.id}/public-qr?download=1`}>Download QR umum PNG</a><Link className="event-section-link underline" href={`/e/${event.slug}/checkin`} target="_blank" rel="noopener noreferrer">Buka halaman tamu<span className="sr-only"> (tab baru)</span></Link></div></section>}
     <section id="guests"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Daftar tamu</h2><p className="mt-1 text-sm text-muted-foreground">Menampilkan {guests.length} dari {event._count.invitations} undangan · urutan nama A–Z</p></div>{admin && <Link href={`/admin/events/${event.id}/guests`} className="event-section-link underline">Lihat semua tamu</Link>}</div>{guests.length ? <ul tabIndex={0} aria-label="Daftar tamu acara, gulir untuk melihat lainnya" className="max-h-[32rem] overflow-y-auto divide-y border-y pr-2">{guests.map((guest) => <li key={guest.id} className="flex flex-wrap items-center justify-between gap-3 py-4 text-sm"><div className="min-w-0 flex-1"><p className="font-medium">{guest.guestName}</p><p className="mt-1 text-muted-foreground">{guest.checkedInCount ?? 0} / {guest.guestQuota} hadir · {guest.checkedInAt ? "Sudah check-in" : "Belum hadir"}</p></div>{admin && <InvitationQrActions compact eventId={event.id} invitationId={guest.id} guestName={guest.guestName} />}</li>)}</ul> : <p className="border-y py-8 text-sm text-muted-foreground">Belum ada undangan untuk acara ini.</p>}</section>

@@ -11,7 +11,7 @@ async function PageContent({ params }: { params: Promise<{ eventId: string }> })
   const { eventId } = await params;
   const event = await prisma.event.findUnique({ where: { id: eventId }, include: { client: { select: { id: true, name: true, status: true } } } });
   if (!event) notFound();
-  return <div className="space-y-7"><PageHeading title="Edit acara" description="Perbarui informasi acara. Penugasan staff dan riwayat tamu tetap tersimpan." />{!(event.status in eventStatuses) && <p role="status" className="text-sm text-amber-800">Status lama: {event.status}. Pilih status yang berlaku sebelum menyimpan.</p>}<EventForm clients={[event.client]} event={{ id: event.id, clientId: event.clientId, name: event.name, slug: event.slug, location: event.location ?? "", status: event.status as keyof typeof eventStatuses, ...localEventInputs(event.eventDate) }} /></div>;
+  return <div className="space-y-7"><PageHeading title="Edit acara" description="Perbarui informasi acara. Penugasan staff dan riwayat tamu tetap tersimpan." />{!(event.status in eventStatuses) && <p role="status" className="text-sm text-amber-800">Status lama: {event.status}. Pilih status yang berlaku sebelum menyimpan.</p>}<EventForm clients={[event.client]} event={{ id: event.id, timeZone: event.timeZone, clientId: event.clientId, name: event.name, slug: event.slug, location: event.location ?? "", status: event.status as keyof typeof eventStatuses, ...localEventInputs(event.eventDate) }} /></div>;
 }
 
 export default function Page(props: Parameters<typeof PageContent>[0]) {
