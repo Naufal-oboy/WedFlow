@@ -44,6 +44,7 @@ model Event {
   eventDate DateTime
   location  String?
   status    String   @default("DRAFT")
+  timeZone  String   @default("Asia/Jakarta")
   createdAt DateTime @default(now())
 
   client           Client       @relation(fields: [clientId], references: [id])
@@ -74,7 +75,7 @@ model Invitation {
   checkinLogs CheckinLog[]
   precheckinRequests PrecheckinRequest[]
 
-  @@index([eventId])
+  @@index([eventId, id])
 }
 
 enum Role {

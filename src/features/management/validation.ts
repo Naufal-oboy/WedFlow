@@ -21,6 +21,10 @@ export const eventSchema = z.object({
   time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "Waktu tidak valid."),
   location: z.string().trim().min(2, "Lokasi wajib diisi.").max(300),
   status: z.enum(["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"]),
+  timeZone: z.string().trim().min(1).max(100).refine((value) => {
+    try { new Intl.DateTimeFormat("id-ID", { timeZone: value }); return true; }
+    catch { return false; }
+  }, "Gunakan zona waktu IANA yang valid.").default("Asia/Jakarta"),
 });
 
 export type SearchParams = Record<string, string | string[] | undefined>;

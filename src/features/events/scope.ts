@@ -11,7 +11,7 @@ export function eventScope(user: Session["user"]): Prisma.EventWhereInput {
 }
 
 export const eventSelect = {
-  id: true, name: true, slug: true, eventDate: true, location: true, status: true,
+  id: true, name: true, slug: true, eventDate: true, location: true, status: true, timeZone: true,
   client: { select: { id: true, name: true, status: true } },
   _count: { select: { invitations: true } },
 } satisfies Prisma.EventSelect;

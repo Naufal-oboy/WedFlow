@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
+    "test:attendance:e2e": "node --conditions=react-server --import tsx scripts/test-attendance-e2e.ts",
+    "test:attendance:migration": "node --import tsx scripts/test-attendance-migration.ts",
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
